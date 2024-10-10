@@ -189,7 +189,7 @@ int main (int argc,char* argv[]) {
     while ((option=getopt(argc,argv,"hf:s:o:"))!=-1) {
         switch (option) {
         case 'h':
-            cout<<"Vodka v0.1 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find] [-s source file]"<<endl;
+            cout<<"Vodka v0.1 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file]"<<endl;
             return 0;
         case 'f':
             mode="find";
