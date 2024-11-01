@@ -57,8 +57,9 @@ namespace vodka {
                 } else if (thing=="ADD") {
                     string args;
                     for (auto a:addele.argument_uid) {
-                        args=args+a;
+                        args=args+" "+a;
                     }
+                    args=args.substr(1,args.size()-1);
                     return addele.info.name+" "+addele.output_uid+" "+args;
                 } else {
                     return "error";
@@ -115,15 +116,23 @@ namespace vodka {
             string remove_zero(const string& value) {
                 bool reached=false;
                 string out;
-                for (int i=0;i<value.length();++i) {
-                    if (value[i]=='0' && reached==false) {
-                        reached=false;
-                    } else if (value[i]!='0' && reached==false) {
-                        reached=true;
-                        out=out+value[i];
+                if (value!="0") {
+                    if (count(value.begin(),value.end(),'0')!=value.length()) {
+                        for (int i=0;i<value.length();++i) {
+                            if (value[i]=='0' && reached==false) {
+                                reached=false;
+                            } else if (value[i]!='0' && reached==false) {
+                                reached=true;
+                                out=out+value[i];
+                            } else {
+                                out=out+value[i];
+                            }
+                        }
                     } else {
-                        out=out+value[i];
+                        out="0";
                     }
+                } else {
+                    out="0";
                 }
                 return out;
             }
@@ -231,17 +240,17 @@ void check() {
         cout<<"\r"<<last<<" Done";
     }
 }
-void debuglog(const string& text,int line) {
+void debuglog(const string& text,int line,const string& cell) {
     if (debugmode==true) {
         if (verbose=="e") {
             string texti=text.substr(1,text.length()-1);
-            cout<<"Debug line "+to_string(line)+" : "+texti<<endl;
+            cout<<"Debug line "+to_string(line)+" in cell "+cell+" : "+texti<<endl;
         } else if (verbose=="r") {
             string texti=text.substr(1,text.length()-1);
-            cout<<endl<<"Debug line "+to_string(line)+" : "+texti<<endl;
+            cout<<endl<<"Debug line "+to_string(line)+" in cell "+cell+" : "+texti<<endl;
         } else if (verbose=="a") {
             string texti=text.substr(1,text.length()-1);
-            cout<<endl<<"Debug line "+to_string(line)+" : "+texti;
+            cout<<endl<<"Debug line "+to_string(line)+" in cell "+cell+" : "+texti;
         }
     }
 }
@@ -269,7 +278,7 @@ int main (int argc,char* argv[]) {
     while ((option=getopt(argc,argv,"hdvVf:s:o:"))!=-1) {
         switch (option) {
         case 'h':
-            cout<<"Vodka v0.1.1 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file] [-v set verbose mode to reduced] [-V set verbose mode to all] [-d enable debug mode]"<<endl;
+            cout<<"Vodka v0.2 beta 1 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file] [-v set verbose mode to reduced] [-V set verbose mode to all] [-d enable debug mode]"<<endl;
             return 0;
         case 'f':
             mode="find";
@@ -504,7 +513,7 @@ int main (int argc,char* argv[]) {
         string line=maincell.content[i];
         log("Analysing line "+to_string(i+1)+" :",1,{(int)i+1},{maincell.content.size()});
         if (line.substr(0,1)==">") {
-            debuglog(line,maincell.start.line+(int)i+1);
+            debuglog(line,maincell.start.line+(int)i+1,"main");
         } else if (line.substr(0,5)=="vodka") {
             log("Checking vodka declaration syntax...",2,{(int)i+1,1},{maincell.content.size(),8});
             auto eles=split(line,"=");
@@ -553,7 +562,7 @@ int main (int argc,char* argv[]) {
                         if (vodka::type::vodint::check_value(valuepart[1])) {
                             varint.value=vodka::type::vodint::remove_zero(valuepart[1]);
                         } else {
-                            error("vodka.error.vodint.invalid_value : Invalid value : "+valuepart[1],file,{line},{maincell.start.line+(int)i+1},{line.find(valuepart[1])+1},{valuepart[1].length()-1});
+                            error("vodka.error.vodint.invalid_value : Invalid value : "+valuepart[1],file,{line},{maincell.start.line+(int)i+1},{line.find(valuepart[1])+1},{valuepart[1].length()});
                             return -1;
                         }
                         check();
@@ -581,11 +590,11 @@ int main (int argc,char* argv[]) {
             auto eles=split(line," ");
             if (eles.size()>=2) {
                 check();
-                log("Checking content...",2,{(int)i+1,2},{maincell.content.size(),3});
+                log("Checking content existence...",2,{(int)i+1,2},{maincell.content.size(),3});
                 vector<string> eltoprint(eles.begin()+1,eles.end());
                 for (auto a:eltoprint) {
                     if (find(variableslist.begin(),variableslist.end(),a)==variableslist.end() && find(mainargsname.begin(),mainargsname.end(),a)==mainargsname.end()) {
-                        error("vodka.error.variables.not_declared : "+a+" wasn't declared before vodprint's instruction.",file,{line},{maincell.start.line+(int)i+1},{line.find(a)+1},{a.length()});
+                        error("vodka.error.variables.not_declared : "+a+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1},{line.find(a)+1},{a.length()});
                         return -1;
                     }
                 }
@@ -607,7 +616,46 @@ int main (int argc,char* argv[]) {
                 instructions.push_back(syscont);
                 check();
             } else {
-                error("vodka.error.vodprint.invalid syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
+                error("vodka.error.kernel.print.invalid syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
+                return -1;
+            }
+        } else if (line.substr(0,10)=="kernel.add") {
+            log("Checking system call syntax...",2,{(int)i+1,1},{maincell.content.size(),4});
+            auto eles=split(line," ");
+            if (eles.size()>=4) {
+                check();
+                log("Checking content existence...",2,{(int)i+1,2},{maincell.content.size(),4});
+                vector<string> argsgive(eles.begin()+1,eles.end());
+                for (auto a:argsgive) {
+                    if (find(variableslist.begin(),variableslist.end(),a)==variableslist.end()) {
+                        error("vodka.error.variables.not_declared : "+a+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1},{line.find(a)+1},{a.length()});
+                        return -1;
+                    }
+                }
+                check();
+                log("Checking content datatype...",2,{(int)i+1,3},{maincell.content.size(),4});
+                for (auto a:argsgive) {
+                    if (variablesdict[a].thing!="vodint" || variablesdict[a].intele.typeinfo.typenames!="vodint") {
+                        error("vodka.error.kernel.add.wrong_type : "+a+" isn't vodint type.",file,{line},{maincell.start.line+(int)i+1},{line.find(argsgive[i])},{argsgive[i].length()});
+                        return -1;
+                    }
+                }
+                check();
+                log("Registering system call...",2,{(int)i+1,4},{maincell.content.size(),4});
+                vector<string> uidargs;
+                for (auto a:argsgive) {
+                    uidargs.push_back(variablesdict[a].intele.varinfo.uuid);
+                }
+                vodka::syscalls::ADD syscal;
+                syscal.argument_uid=vector<string>(uidargs.begin()+1,uidargs.end());
+                syscal.output_uid=uidargs[0];
+                vodka::syscalls::syscall_container syscont;
+                syscont.thing="ADD";
+                syscont.addele=syscal;
+                instructions.push_back(syscont);
+                check();
+            } else {
+                error("vodka.error.kernel.add.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
                 return -1;
             }
         } else {
