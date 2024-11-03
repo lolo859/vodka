@@ -73,6 +73,17 @@ namespace vodka {
                 info.support_multiple_argument=false;
             }
         };
+        class BACK {
+            public:
+                string var_uid;
+                string const_uid;
+                string back_uid;
+                syscall info;
+            BACK() {
+                info.name="BACK";
+                info.support_multiple_argument=true;
+            }
+        };
         class syscall_container {
             public:
                 string thing;
@@ -81,6 +92,7 @@ namespace vodka {
                 ASSIGN assignele;
                 FREE freeele;
                 INVERT invertele;
+                BACK backele;
             string syntax() {
                 if (thing=="PRINT") {
                     string args;
@@ -107,6 +119,8 @@ namespace vodka {
                     return freeele.info.name+" "+args;
                 } else if (thing=="INVERT") {
                     return invertele.info.name+" "+invertele.uid;
+                } else if (thing=="BACK") {
+                    return backele.info.name+" "+backele.var_uid+" "+backele.const_uid+" "+backele.back_uid;
                 } else {
                     return "error";
                 }
@@ -206,6 +220,22 @@ namespace vodka {
                 }
                 return out;
             }
+            string calculate_sign(const string& value1,const string& value2) {
+                if (value1.substr(0,1)!="-" && value2.substr(0,1)!="-") {
+                    return "";
+                } else if (value1.substr(0,1)=="-" && value2.substr(0,1)=="-") {
+                    return "";
+                } else {
+                    return "-";
+                }
+            }
+            string abs(const string& value) {
+                if (value.substr(0,1)=="-") {
+                    return value.substr(1,value.length()-1);
+                } else {
+                    return value;
+                }
+            }
         }
     }
 }
@@ -256,6 +286,7 @@ std::vector<std::string> split(const std::string& str,const std::string& delimit
     }
     return tokens;
 }
+
 //* Vodka structure
 struct symbol {
     int line;
@@ -365,7 +396,7 @@ int main (int argc,char* argv[]) {
     while ((option=getopt(argc,argv,"hdvVf:s:o:"))!=-1) {
         switch (option) {
         case 'h':
-            cout<<"Vodka v0.2 beta 2 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file] [-v set verbose mode to reduced] [-V set verbose mode to all] [-d enable debug mode]"<<endl;
+            cout<<"Vodka v0.2 beta 3 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file] [-v set verbose mode to reduced] [-V set verbose mode to all] [-d enable debug mode]"<<endl;
             return 0;
         case 'f':
             mode="find";
@@ -779,6 +810,144 @@ int main (int argc,char* argv[]) {
                 syscont.thing="INVERT";
                 syscont.invertele=syscal;
                 instructions.push_back(syscont);
+                check();
+            } else {
+                error("vodka.error.kernel.add.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
+                return -1;
+            }
+        } else if (line.substr(0,8)=="multiply") {
+            log("Checking instruction syntax...",2,{(int)i+1,1},{maincell.content.size(),4});
+            auto eles=split(line," ");
+            if (eles.size()==4) {
+                check();
+                log("Checking content existence...",2,{(int)i+1,2},{maincell.content.size(),4});
+                string arg;
+                for (int y=1;y<eles.size();++y) {
+                    arg=eles[y];
+                    if (find(variableslist.begin(),variableslist.end(),arg)==variableslist.end()) {
+                        error("vodka.error.variables.not_declared : "+arg+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1},{line.find(arg)+1},{arg.length()});
+                        return -1;
+                    }
+                }
+                check();
+                log("Checking content datatype...",2,{(int)i+1,3},{maincell.content.size(),4});
+                vector<string> argsname(eles.begin()+1,eles.end());
+                for (auto a:argsname) {
+                    if (variablesdict[a].thing!="vodint" || variablesdict[a].intele.typeinfo.typenames!="vodint") {
+                        error("vodka.error.instruction.multiply.wrong_type : "+a+" isn't vodint type.",file,{line},{maincell.start.line+(int)i+1},{line.find(a)+1},{a.length()});
+                        return -1;
+                    }
+                }
+                check();
+                log("Registering systems call for this instructions...",2,{(int)i+1,4},{maincell.content.size(),4});
+                vector<string> uidargs;
+                for (auto a:argsname) {
+                    uidargs.push_back(variablesdict[a].intele.varinfo.uuid);
+                }
+                string outputuid=uidargs[0];
+                vodka::syscalls::ASSIGN assigncall;
+                assigncall.output_uid=outputuid;
+                assigncall.value="0";
+                vodka::syscalls::syscall_container syscont;
+                syscont.thing="ASSIGN";
+                syscont.assignele=assigncall;
+                instructions.push_back(syscont);
+                if (variablesdict[argsname[2]].intele.value!="0") {
+                    if (variablesdict[argsname[1]].intele.value.substr(0,1)=="-") {
+                        vodka::syscalls::INVERT invertcall;
+                        invertcall.uid=uidargs[1];
+                        vodka::syscalls::syscall_container syscont;
+                        syscont.invertele=invertcall;
+                        syscont.thing="INVERT";
+                        instructions.push_back(syscont);
+                    }
+                    if (variablesdict[argsname[2]].intele.value.substr(0,1)=="-") {
+                        vodka::syscalls::INVERT invertcall;
+                        invertcall.uid=uidargs[2];
+                        vodka::syscalls::syscall_container syscont;
+                        syscont.invertele=invertcall;
+                        syscont.thing="INVERT";
+                        instructions.push_back(syscont);
+                    }
+                    vodka::syscalls::ASSIGN assigncall;
+                    string countuid=to_string(genuid());
+                    assigncall.output_uid=countuid;
+                    assigncall.value="0";
+                    vodka::syscalls::syscall_container syscont;
+                    syscont.thing="ASSIGN";
+                    syscont.assignele=assigncall;
+                    instructions.push_back(syscont);
+                    vodka::syscalls::ASSIGN assigncall2;
+                    string one_const=to_string(genuid());
+                    assigncall2.output_uid=one_const;
+                    assigncall2.value="1";
+                    vodka::syscalls::syscall_container syscont2;
+                    syscont2.thing="ASSIGN";
+                    syscont2.assignele=assigncall2;
+                    instructions.push_back(syscont2);
+                    vodka::syscalls::ASSIGN assigncall3;
+                    string two_const=to_string(genuid());
+                    assigncall3.output_uid=two_const;
+                    assigncall3.value="2";
+                    vodka::syscalls::syscall_container syscont3;
+                    syscont3.thing="ASSIGN";
+                    syscont3.assignele=assigncall3;
+                    instructions.push_back(syscont3);
+                    vector<string> uidtoadd={outputuid,uidargs[1]};
+                    vodka::syscalls::ADD addcall;
+                    addcall.output_uid=outputuid;
+                    addcall.argument_uid=uidtoadd;
+                    vodka::syscalls::syscall_container syscont4;
+                    syscont4.thing="ADD";
+                    syscont4.addele=addcall;
+                    instructions.push_back(syscont4);
+                    vector<string> uidtoadd2={countuid,one_const};
+                    vodka::syscalls::ADD addcall2;
+                    addcall2.output_uid=countuid;
+                    addcall2.argument_uid=uidtoadd2;
+                    vodka::syscalls::syscall_container syscont5;
+                    syscont5.thing="ADD";
+                    syscont5.addele=addcall2;
+                    instructions.push_back(syscont5);
+                    vodka::syscalls::BACK backcall;
+                    backcall.back_uid=two_const;
+                    backcall.var_uid=countuid;
+                    backcall.const_uid=uidargs[2];
+                    vodka::syscalls::syscall_container syscont6;
+                    syscont6.thing="BACK";
+                    syscont6.backele=backcall;
+                    instructions.push_back(syscont6);
+                    vodka::syscalls::FREE freecall;
+                    freecall.args_uid={countuid,one_const,two_const};
+                    vodka::syscalls::syscall_container syscont7;
+                    syscont7.thing="FREE";
+                    syscont7.freeele=freecall;
+                    instructions.push_back(syscont7);
+                    if (vodka::type::vodint::calculate_sign(variablesdict[argsname[1]].intele.value,variablesdict[argsname[2]].intele.value).substr(0,1)=="-") {
+                        vodka::syscalls::INVERT invertcall;
+                        invertcall.uid=outputuid;
+                        vodka::syscalls::syscall_container syscont;
+                        syscont.invertele=invertcall;
+                        syscont.thing="INVERT";
+                        instructions.push_back(syscont);
+                    }
+                    if (variablesdict[argsname[1]].intele.value.substr(0,1)=="-") {
+                        vodka::syscalls::INVERT invertcall;
+                        invertcall.uid=uidargs[1];
+                        vodka::syscalls::syscall_container syscont;
+                        syscont.invertele=invertcall;
+                        syscont.thing="INVERT";
+                        instructions.push_back(syscont);
+                    }
+                    if (variablesdict[argsname[2]].intele.value.substr(0,1)=="-") {
+                        vodka::syscalls::INVERT invertcall;
+                        invertcall.uid=uidargs[2];
+                        vodka::syscalls::syscall_container syscont;
+                        syscont.invertele=invertcall;
+                        syscont.thing="INVERT";
+                        instructions.push_back(syscont);
+                    }
+                }
                 check();
             } else {
                 error("vodka.error.kernel.add.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
