@@ -9,6 +9,10 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <nlohmann/json.hpp>
+#include <cctype>
+#include <cstring>
+#include <chrono>
 //* Some variables
 using namespace std;
 string verbose="e";
@@ -238,6 +242,24 @@ namespace vodka {
             }
         }
     }
+    //* Json utilities
+    namespace json {
+        class json_container {
+            public:
+                string type;
+                string intname;
+                vector<string> args;
+            map<string,string> syntax() {
+                map<string,string> out;
+                out.insert(pair<string,string>("type",type));
+                out.insert(pair<string,string>("intname",intname));
+                for (int i=0;i<args.size();++i) {
+                    out.insert(pair<string,string>("arg"+to_string(i+1),args[i]));
+                }
+                return out;
+            };
+        };
+    }
 }
 //* Error function
 void error(const string& error,const string& file,vector<string> lines_content,vector<int> lines,vector<size_t> indicator,vector<size_t> indic_len) {
@@ -327,13 +349,13 @@ void log(const string& text,int sublevel=0,vector<int> substep={},vector<unsigne
                     cout<<endl<<endl;
                 }
                 x=x+1;
-                last="("+to_string(x)+"/15) "+texti;
+                last="("+to_string(x)+"/16) "+texti;
                 cout<<last;
             }
         } else {
             if (verbose=="a") {
                 cout<<endl;
-                last="("+to_string(x)+"/14) ";
+                last="("+to_string(x)+"/16) ";
                 for (int i=0;i<sublevel;++i) {
                     last=last+"("+to_string(substep[i])+"/"+to_string(subtotal[i])+") ";
                 }
@@ -385,6 +407,7 @@ vector<string> variableslist;
 vector<string> symbollist={"VODSTART","VODEND","VODIMPORT","VODTYPE","VODSTRUCT","VODCLASS","VODENDCLASS"};
 vector<string> typelist={"app","command","shell","gui","logonui","logonshell","service"};
 vector<string> final;
+vector<map<string,string>> json_ints;
 //* Main function
 int main (int argc,char* argv[]) {
     string output="";
@@ -393,10 +416,10 @@ int main (int argc,char* argv[]) {
     string finde;
     opterr=0;
     //* Args management
-    while ((option=getopt(argc,argv,"hdvVf:s:o:"))!=-1) {
+    while ((option=getopt(argc,argv,"hjdvVf:s:o:"))!=-1) {
         switch (option) {
         case 'h':
-            cout<<"Vodka v0.2 beta 3 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file] [-v set verbose mode to reduced] [-V set verbose mode to all] [-d enable debug mode]"<<endl;
+            cout<<"Vodka v0.2 beta 4 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file] [-v set verbose mode to reduced] [-V set verbose mode to all] [-d enable debug mode] [-j export output to a json file specified with -o]"<<endl;
             return 0;
         case 'f':
             mode="find";
@@ -416,6 +439,9 @@ int main (int argc,char* argv[]) {
             break;
         case 'd':
             debugmode=true;
+            break;
+        case 'j':
+            mode="json";
             break;
         case '?':
             cout<<"Invalid argument."<<endl;
@@ -984,16 +1010,102 @@ int main (int argc,char* argv[]) {
     log("Opening output file...");
     ofstream outputfile(output);
     check();
-    log("Writing in output file :");
-    if (outputfile.is_open()) {
+    if (mode=="compile") {
+        log("Writing in output file :");
+        if (outputfile.is_open()) {
+            a=1;
+            for (const auto& line:final) {
+                log("Writing line number "+to_string(a)+"...",1,{a},{final.size()});
+                outputfile<<line<<"\n";
+                a=a+1;
+                check();
+            }
+            log("Closing output file...");
+            outputfile.close();
+            check();
+            if (verbose=="r" || verbose=="a") {cout<<"\nSucessfully compile "+file+" to "+output<<endl;}
+        }
+    } else if (mode=="json") {
+        log("Converting to json format :");
         a=1;
         for (const auto& line:final) {
-            log("Writing line number "+to_string(a)+"...",1,{a},{final.size()});
-            outputfile<<line<<"\n";
+            auto now=chrono::system_clock::now();
+            time_t now_c=chrono::system_clock::to_time_t(now);
+            tm utc=*std::gmtime(&now_c);
+            stringstream ss;
+            ss<<put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
+            log("Converting line "+to_string(a)+"...",1,{a},{final.size()});
+            json_ints.push_back({{"type","metadata"},{"vodka_version","0.2 beta 4"},{"json_version","1"},{"source_file",file},{"timestamp",ss.str()}});
+            if (line.substr(0,4)=="type") {
+                vodka::json::json_container jsonth;
+                jsonth.type="kernel_symbol";
+                jsonth.intname="type";
+                auto eles=split(line," ");
+                jsonth.args={eles[1]};
+                json_ints.push_back(jsonth.syntax());
+            } else if (line.substr(0,5)=="args:") {
+                vodka::json::json_container jsonth;
+                jsonth.type="kernel_symbol";
+                jsonth.intname="args:";
+                jsonth.args={"<nothing>"};
+                json_ints.push_back(jsonth.syntax());
+            } else if (line.substr(0,7)=="endargs") {
+                vodka::json::json_container jsonth;
+                jsonth.type="kernel_symbol";
+                jsonth.intname="endargs";
+                jsonth.args={"<nothing>"};
+                json_ints.push_back(jsonth.syntax());
+            } else if (line.substr(0,5)=="data:") {
+                vodka::json::json_container jsonth;
+                jsonth.type="kernel_symbol";
+                jsonth.intname="data:";
+                jsonth.args={"<nothing>"};
+                json_ints.push_back(jsonth.syntax());
+            } else if (line.substr(0,7)=="enddata") {
+                vodka::json::json_container jsonth;
+                jsonth.type="kernel_symbol";
+                jsonth.intname="enddata";
+                jsonth.args={"<nothing>"};
+                json_ints.push_back(jsonth.syntax());
+            } else if (line.substr(0,5)=="code:") {
+                vodka::json::json_container jsonth;
+                jsonth.type="kernel_symbol";
+                jsonth.intname="code:";
+                jsonth.args={"<nothing>"};
+                json_ints.push_back(jsonth.syntax());
+            } else if (line.substr(0,7)=="endcode") {
+                vodka::json::json_container jsonth;
+                jsonth.type="kernel_symbol";
+                jsonth.intname="endcode";
+                jsonth.args={"<nothing>"};
+                json_ints.push_back(jsonth.syntax());
+            } else if (std::isalpha(line[0]) && std::isupper(line[0])) {
+                vodka::json::json_container jsonth;
+                jsonth.type="system_call";
+                jsonth.intname=split(line," ")[0];
+                auto eles=split(line," ");
+                jsonth.args=vector<string>(eles.begin()+1,eles.end());
+                json_ints.push_back(jsonth.syntax());
+            } else {
+                vodka::json::json_container jsonth;
+                jsonth.type="variable";
+                jsonth.intname=split(line,"=")[0];
+                auto eles=split(line,"=");
+                string otherside;
+                for (int i=1;i<eles.size();++i) {
+                    otherside=otherside+eles[i];
+                }
+                jsonth.args={otherside};
+                json_ints.push_back(jsonth.syntax());
+            }
             a=a+1;
             check();
         }
+        log("Writing json file...");
+        nlohmann::json j=json_ints;
+        outputfile<<j.dump();
         outputfile.close();
+        check();
         if (verbose=="r" || verbose=="a") {cout<<"\nSucessfully compile "+file+" to "+output<<endl;}
     }
     return 0;
