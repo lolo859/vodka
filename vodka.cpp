@@ -88,6 +88,16 @@ namespace vodka {
                 info.support_multiple_argument=true;
             }
         };
+        class DUPLICATE {
+            public:
+                string source_uid;
+                string output_uid;
+                syscall info;
+            DUPLICATE() {
+                info.name="DUPLICATE";
+                info.support_multiple_argument=true;
+            }
+        };
         class syscall_container {
             public:
                 string thing;
@@ -97,6 +107,7 @@ namespace vodka {
                 FREE freeele;
                 INVERT invertele;
                 BACK backele;
+                DUPLICATE duplicateele;
             string syntax() {
                 if (thing=="PRINT") {
                     string args;
@@ -125,6 +136,8 @@ namespace vodka {
                     return invertele.info.name+" "+invertele.uid;
                 } else if (thing=="BACK") {
                     return backele.info.name+" "+backele.var_uid+" "+backele.const_uid+" "+backele.back_uid;
+                } else if (thing=="DUPLICATE") {
+                    return duplicateele.info.name+" "+duplicateele.output_uid+" "+duplicateele.source_uid;
                 } else {
                     return "error";
                 }
@@ -136,13 +149,14 @@ namespace vodka {
         class typess {
             public:
                 string typenames;
-                vector<string> method;
         };
         class variable {
             public:
                 string varname;
                 string uuid;
                 bool consts;
+                bool write=true;
+                bool define=false;
                 bool algo_dependant;
         };
         class vodint {
@@ -152,7 +166,6 @@ namespace vodka {
                 typess typeinfo;
             vodint() {
                 typeinfo.typenames="vodint";
-                typeinfo.method={"add","sub","mul","div","dive","mod","abs","exp"};
             }
         };
         class element {
@@ -262,7 +275,7 @@ namespace vodka {
     }
 }
 //* Error function
-void error(const string& error,const string& file,vector<string> lines_content,vector<int> lines,vector<size_t> indicator,vector<size_t> indic_len) {
+void error(const string& error,const string& file,vector<string> lines_content,vector<int> lines) {
     string linestr="";
     if (lines.size()>1) {
         for (size_t i=0;i<lines.size();++i) {
@@ -276,18 +289,8 @@ void error(const string& error,const string& file,vector<string> lines_content,v
         linestr=to_string(lines[0]);
     }
     cout<<"\nFile "+file+":"+to_string(lines[0])+", line(s) "+linestr+" an error occured :"<<endl;
-    for (size_t y=0;y<indicator.size();++y) {
+    for (size_t y=0;y<lines.size();++y) {
         cout<<"  "<<lines[y]<<" | "<<lines_content[y]<<endl;
-        if (indicator[y]!=0) {
-            cout<<" ";
-            for (size_t i=0;i<indicator[y]+to_string(lines[0]).size()+3;++i) {
-                cout<<" ";
-            }
-            for (size_t i=0;i<indic_len[y];++i) {
-                cout<<"^";
-            }
-            cout<<endl;
-        }
     }
     cout<<error<<endl;
 }
@@ -308,7 +311,13 @@ std::vector<std::string> split(const std::string& str,const std::string& delimit
     }
     return tokens;
 }
-
+void replaceall(std::string &str,const std::string &from,const std::string &to) {
+    size_t start_pos=0;
+    while ((start_pos=str.find(from, start_pos))!=std::string::npos) {
+        str.replace(start_pos,from.length(),to);
+        start_pos+=to.length();
+    }
+}
 //* Vodka structure
 struct symbol {
     int line;
@@ -349,13 +358,13 @@ void log(const string& text,int sublevel=0,vector<int> substep={},vector<unsigne
                     cout<<endl<<endl;
                 }
                 x=x+1;
-                last="("+to_string(x)+"/16) "+texti;
+                last="("+to_string(x)+"/18) "+texti;
                 cout<<last;
             }
         } else {
             if (verbose=="a") {
                 cout<<endl;
-                last="("+to_string(x)+"/16) ";
+                last="("+to_string(x)+"/18) ";
                 for (int i=0;i<sublevel;++i) {
                     last=last+"("+to_string(substep[i])+"/"+to_string(subtotal[i])+") ";
                 }
@@ -403,23 +412,25 @@ vector<string> mainargsname;
 map<string,string> mainargsdict;
 vector<vodka::syscalls::syscall_container> instructions;
 map<string,vodka::variables::element> variablesdict;
+map<string,string> replacement;
 vector<string> variableslist;
-vector<string> symbollist={"VODSTART","VODEND","VODIMPORT","VODTYPE","VODSTRUCT","VODCLASS","VODENDCLASS"};
+vector<string> symbollist={"VODSTART","VODEND","VODIMPORT","VODTYPE","VODSTRUCT","VODCLASS","VODENDCLASS","VODEFINE"};
 vector<string> typelist={"app","command","shell","gui","logonui","logonshell","service"};
 vector<string> final;
-vector<map<string,string>> json_ints;
+map<string,map<string,string>> json_ints;
 //* Main function
 int main (int argc,char* argv[]) {
     string output="";
     int option;
+    bool replace=true;
     string mode="compile";
     string finde;
     opterr=0;
     //* Args management
-    while ((option=getopt(argc,argv,"hjdvVf:s:o:"))!=-1) {
+    while ((option=getopt(argc,argv,"hjrdvVf:s:o:"))!=-1) {
         switch (option) {
         case 'h':
-            cout<<"Vodka v0.2 beta 4 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file] [-v set verbose mode to reduced] [-V set verbose mode to all] [-d enable debug mode] [-j export output to a json file specified with -o]"<<endl;
+            cout<<"Vodka v0.2 beta 5 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file] [-v set verbose mode to reduced] [-V set verbose mode to all] [-d enable debug mode] [-j export output to a json file specified with -o] [-r disable define replacement]"<<endl;
             return 0;
         case 'f':
             mode="find";
@@ -442,6 +453,9 @@ int main (int argc,char* argv[]) {
             break;
         case 'j':
             mode="json";
+            break;
+        case 'r':
+            replace=false;
             break;
         case '?':
             cout<<"Invalid argument."<<endl;
@@ -497,7 +511,7 @@ int main (int argc,char* argv[]) {
             log("Checking symbol...",2,{(int)i+1,2},{content.size(),3});
             if (find(symbollist.begin(),symbollist.end(),temp.type)==symbollist.end()) {
                 int linenum=i+1;
-                error("vodka.error.symbol.unknow_symbol : Unknow symbol found : "+temp.type,file,{line},{linenum},{2},{temp.type.length()});
+                error("vodka.error.symbol.unknow_symbol : Unknow symbol found : "+temp.type,file,{line},{linenum});
                 return -1;
             } else {
                 check();
@@ -509,6 +523,22 @@ int main (int argc,char* argv[]) {
             log("No symbol detected.",2,{(int)i+1,1},{content.size(),1});
         }
     }
+    log("Searching define replacement instruction :");
+    for (size_t i=0;i<symbols.size();++i) {
+        log("Checking symbol type :",1,{(int)i+1},{symbols.size()});
+        if (symbols[i].type=="VODEFINE") {
+            auto eles=split(symbols[i].content," ");
+            if (eles.size()==3) {
+                replacement[eles[1]]=eles[2];
+                log("Replacement found. "+eles[1]+" will be replaced with "+eles[2]+".",2,{(int)i+1,1},{symbols.size(),1});
+            } else {
+                error("vodka.error.vodefine.invalid_syntax : Invalid syntax for define replacement declaration.",file,{symbols[i].content},{symbols[i].line});
+                return -1;
+            }
+        } else {
+            log("No VODEFINE symbol detected.",2,{(int)i+1,1},{symbols.size(),1});
+        }
+    }
     log("Looking for type symbol :");
     bool typefound=false;
     for (size_t i=0;i<symbols.size();++i) {
@@ -517,14 +547,14 @@ int main (int argc,char* argv[]) {
             if (typefound==false) {
                 typefound=true;
             } else {
-                error("vodka.error.vodtype.confusion : A vodka program can only contain one VODTYPE symbol.",file,{symbols[i].content},{symbols[i].line},{1},{symbols[i].content.size()-1});
+                error("vodka.error.vodtype.confusion : A vodka program can only contain one VODTYPE symbol.",file,{symbols[i].content},{symbols[i].line});
                 return -1;
             }
         }
         check();
     }
     if (typefound==false) {
-        error("vodka.error.vodtype.not_found : Can't find VODTYPE symbol.",file,{"<no line affected>"},{0},{0},{0});
+        error("vodka.error.vodtype.not_found : Can't find VODTYPE symbol.",file,{"<no line affected>"},{0});
         return -1;
     }
     log("Detecting program type :");
@@ -535,13 +565,13 @@ int main (int argc,char* argv[]) {
             log("Checking syntax...",2,{(int)i+1,1},{symbols.size(),3});
             auto ele=split(symbols[i].content," ");
             if (ele.size()!=2) {
-                error("vodka.error.vodtype.invalid_syntax : Invalid syntax for program type declaration.",file,{symbols[i].content},{symbols[i].line},{1},{symbols[i].content.size()-1});
+                error("vodka.error.vodtype.invalid_syntax : Invalid syntax for program type declaration.",file,{symbols[i].content},{symbols[i].line});
                 return -1;
             }
             check();
             log("Checking program type...",2,{(int)i+1,2},{symbols.size(),3});
             if (find(typelist.begin(),typelist.end(),ele[1])==typelist.end()) {
-                error("vodka.error.vodtype.unknow_type : Unknow type : "+ele[1],file,{symbols[i].content},{symbols[i].line},{10},{ele[1].length()});
+                error("vodka.error.vodtype.unknow_type : Unknow type : "+ele[1],file,{symbols[i].content},{symbols[i].line});
                 return -1;
             }
             check();
@@ -575,7 +605,7 @@ int main (int argc,char* argv[]) {
                     temp.name=args[1];
                     check();
                 } else {
-                    error("vodka.error.vodstart.name_not_found : Can't find cell's name.",file,{symbols[i].content},{symbols[i].line},{0},{0});
+                    error("vodka.error.vodstart.name_not_found : Can't find cell's name.",file,{symbols[i].content},{symbols[i].line});
                     return -1;
                 }
                 log("Checking if an cell with the same name already exist in the program...",1,{5},{10});
@@ -597,7 +627,7 @@ int main (int argc,char* argv[]) {
                     lineerror.push_back(temp.start.line);
                     indicatorpos.push_back(11+to_string(temp.start.line).length()-1);
                     indicatorlen.push_back(args[1].length());
-                    error("vodka.error.cell.confusion : An existing cell with the same name already exists.",file,contenterror,lineerror,indicatorpos,indicatorlen);
+                    error("vodka.error.cell.confusion : An existing cell with the same name already exists.",file,contenterror,lineerror);
                     return -1;
                 }
                 check();
@@ -635,14 +665,14 @@ int main (int argc,char* argv[]) {
                 }
                 check();
             } else {
-                error("vodka.error.vodend.not_found : Can't find corresponding VODEND symbol to the previous VODSTART.",file,{symbols[i].content},{symbols[i].line},{0},{0});
+                error("vodka.error.vodend.not_found : Can't find corresponding VODEND symbol to the previous VODSTART.",file,{symbols[i].content},{symbols[i].line});
                 return -1;
             }
         }
     }
     log("Verifying if program contain a main cell...");
     if (maincell.name!="main") {
-        error("vodka.error.main.not_found : Can't find the main cell.",file,{"<no line affected>"},{0},{0},{0});
+        error("vodka.error.main.not_found : Can't find the main cell.",file,{"<no line affected>"},{0});
         return -1;
     }
     check();
@@ -652,6 +682,24 @@ int main (int argc,char* argv[]) {
         final.push_back(argm);
     }
     check();
+    if (replace==false) {
+        log("Skipping replacement step because of -r.");
+    } else {
+        log("Started define replacing process...");
+        for (int i=0;i<maincell.content.size();++i) {
+            for (auto y:replacement) {
+                replaceall(maincell.content[i],y.first,y.second);
+            }
+        }
+        for (auto u:cells) {
+            for (int i=0;i<u.content.size();++i) {
+                for (auto y:replacement) {
+                    replaceall(maincell.content[i],y.first,y.second);
+                }
+            }
+        }
+        check();
+    }
     log("Started analysing main cell :");
     //* Here happen all the magic
     final.push_back("endargs");
@@ -681,7 +729,7 @@ int main (int argc,char* argv[]) {
                 }
                 check();
                 log("Parsing variable information...",2,{(int)i+1,3},{maincell.content.size(),8});
-                if (namepart.size()==2 && valuepart.size()==2) {
+                if (namepart.size()==2 && valuepart.size()>=2) {
                     string name=namepart[1];
                     string typevar=valuepart[0];
                     check();
@@ -693,7 +741,11 @@ int main (int argc,char* argv[]) {
                         check();
                         log("Detecting variable context...",2,{(int)i+1,6},{maincell.content.size(),8});
                         var.uuid=to_string(genuid());
-                        if (name.substr(0,1)=="$") {
+                        if (name.substr(0,2)=="$$") {
+                            var.consts=true;
+                            var.define=true;
+                            var.algo_dependant=false;
+                        } else if (name.substr(0,1)=="$") {
                             var.consts=true;
                             var.algo_dependant=false;
                         } else {
@@ -702,7 +754,7 @@ int main (int argc,char* argv[]) {
                         }
                         for (auto const& emap:variablesdict) {
                             if (emap.first==name && emap.second.intele.varinfo.consts==true) {
-                                error("vodka.error.variables.constant : Can't modify an constant.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
+                                error("vodka.error.variables.constant : Can't modify an constant.",file,{line},{maincell.start.line+(int)i+1});
                                 return -1;
                             }
                         }
@@ -713,27 +765,87 @@ int main (int argc,char* argv[]) {
                         if (vodka::type::vodint::check_value(valuepart[1])) {
                             varint.value=vodka::type::vodint::remove_zero(valuepart[1]);
                         } else {
-                            error("vodka.error.vodint.invalid_value : Invalid value : "+valuepart[1],file,{line},{maincell.start.line+(int)i+1},{line.find(valuepart[1])+1},{valuepart[1].length()});
+                            error("vodka.error.vodint.invalid_value : Invalid value : "+valuepart[1],file,{line},{maincell.start.line+(int)i+1});
                             return -1;
                         }
                         check();
                         log("Saving variable...",2,{(int)i+1,8},{maincell.content.size(),8});
-                        vodka::variables::element contvar;
-                        contvar.intele=varint;
-                        contvar.thing=typevar;
-                        variablesdict[name]=contvar;
-                        variableslist.push_back(name);
+                        if (find(variableslist.begin(),variableslist.end(),name)==variableslist.end()) {
+                            vodka::variables::element contvar;
+                            contvar.intele=varint;
+                            contvar.thing=typevar;
+                            variablesdict[name]=contvar;
+                            variableslist.push_back(name);
+                            if (var.define==false) {
+                                vodka::syscalls::ASSIGN asscall;
+                                asscall.output_uid=var.uuid;
+                                asscall.value=varint.value;
+                                vodka::syscalls::syscall_container asscont;
+                                asscont.thing="ASSIGN";
+                                asscont.assignele=asscall;
+                                instructions.push_back(asscont);
+                            }
+                        } else {
+                            auto varuid=variablesdict[name].intele.varinfo.uuid;
+                            vodka::syscalls::ASSIGN asscall;
+                            asscall.output_uid=varuid;
+                            asscall.value=varint.value;
+                            vodka::syscalls::syscall_container syscont;
+                            syscont.thing="ASSIGN";
+                            syscont.assignele=asscall;
+                            instructions.push_back(syscont);
+                        }
                         check();
+                    } else if (typevar=="vodka") {
+                        check();
+                        log("Verifying content existence...",2,{(int)i+1,6},{maincell.content.size(),8});
+                        if (valuepart.size()!=2) {
+                            error("vodka.error.variables.multiples_variables : vodka type can only duplicate one variable at the time.",file,{line},{maincell.start.line+(int)i+1});
+                            return -1;
+                        }
+                        if (find(variableslist.begin(),variableslist.end(),valuepart[1])==variableslist.end()) {
+                            error("vodka.error.variables.not_declared : "+valuepart[1]+" wasn't declared before declaration.",file,{line},{maincell.start.line+(int)i+1});
+                            return -1;
+                        }
+                        vodka::variables::variable var;
+                        var.uuid=to_string(genuid());
+                        var.write=false;
+                        if (name.substr(0,2)=="$$") {
+                            error("vodka.error.variables.kernel_constant : Can't create kernel constant from variables duplication.",file,{line},{maincell.start.line+(int)i+1});
+                        } else if (name.substr(0,1)=="$") {
+                            var.consts=true;
+                        } else {
+                            var.consts=false;
+                        }
+                        var.varname=name;
+                        if (variablesdict[valuepart[1]].thing=="vodint") {
+                            var.algo_dependant=variablesdict[valuepart[1]].intele.varinfo.algo_dependant;
+                            vodka::variables::vodint varint;
+                            varint.varinfo=var;
+                            varint.value=variablesdict[valuepart[1]].intele.value;
+                            vodka::variables::element varcont;
+                            varcont.thing="vodint";
+                            varcont.intele=varint;
+                            variablesdict[name]=varcont;
+                            variableslist.push_back(name);
+                            vodka::syscalls::DUPLICATE dupcall;
+                            dupcall.output_uid=var.uuid;
+                            dupcall.source_uid=variablesdict[valuepart[1]].intele.varinfo.uuid;
+                            vodka::syscalls::syscall_container dupcont;
+                            dupcont.thing="DUPLICATE";
+                            dupcont.duplicateele=dupcall;
+                            instructions.push_back(dupcont);
+                        }
                     } else {
-                        error("vodka.error.variables.unknow_type : Unknow type : "+typevar,file,{line},{maincell.start.line+(int)i+1},{line.find(typevar)+1},{typevar.length()});
+                        error("vodka.error.variables.unknow_type : Unknow type : "+typevar,file,{line},{maincell.start.line+(int)i+1});
                         return -1;
                     }
                 } else {
-                    error("vodka.error.variables.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
+                    error("vodka.error.variables.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
                     return -1;
                 }
             } else {
-                error("vodka.error.variables.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
+                error("vodka.error.variables.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }
         //* Kernel function analysis
@@ -746,7 +858,7 @@ int main (int argc,char* argv[]) {
                 vector<string> eltoprint(eles.begin()+1,eles.end());
                 for (auto a:eltoprint) {
                     if (find(variableslist.begin(),variableslist.end(),a)==variableslist.end() && find(mainargsname.begin(),mainargsname.end(),a)==mainargsname.end()) {
-                        error("vodka.error.variables.not_declared : "+a+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1},{line.find(a)+1},{a.length()});
+                        error("vodka.error.variables.not_declared : "+a+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1});
                         return -1;
                     }
                 }
@@ -768,7 +880,7 @@ int main (int argc,char* argv[]) {
                 instructions.push_back(syscont);
                 check();
             } else {
-                error("vodka.error.kernel.print.invalid syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
+                error("vodka.error.kernel.print.invalid syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }
         } else if (line.substr(0,10)=="kernel.add") {
@@ -780,15 +892,18 @@ int main (int argc,char* argv[]) {
                 vector<string> argsgive(eles.begin()+1,eles.end());
                 for (auto a:argsgive) {
                     if (find(variableslist.begin(),variableslist.end(),a)==variableslist.end()) {
-                        error("vodka.error.variables.not_declared : "+a+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1},{line.find(a)+1},{a.length()});
+                        error("vodka.error.variables.not_declared : "+a+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1});
                         return -1;
                     }
+                }
+                if (eles[1].substr(0,2)=="$$" || eles[1].substr(0,1)=="$") {
+                    error("vodka.error.variables.constant : Can't modify an constant.",file,{line},{maincell.start.line+(int)i+1});
                 }
                 check();
                 log("Checking content datatype...",2,{(int)i+1,3},{maincell.content.size(),4});
                 for (auto a:argsgive) {
                     if (variablesdict[a].thing!="vodint" || variablesdict[a].intele.typeinfo.typenames!="vodint") {
-                        error("vodka.error.kernel.add.wrong_type : "+a+" isn't vodint type.",file,{line},{maincell.start.line+(int)i+1},{line.find(argsgive[i])+1},{argsgive[i].length()});
+                        error("vodka.error.kernel.add.wrong_type : "+a+" isn't vodint type.",file,{line},{maincell.start.line+(int)i+1});
                         return -1;
                     }
                 }
@@ -807,7 +922,7 @@ int main (int argc,char* argv[]) {
                 instructions.push_back(syscont);
                 check();
             } else {
-                error("vodka.error.kernel.add.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
+                error("vodka.error.kernel.add.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }
         } else if (line.substr(0,13)=="kernel.invert") {
@@ -818,13 +933,16 @@ int main (int argc,char* argv[]) {
                 log("Checking content existence...",2,{(int)i+1,2},{maincell.content.size(),4});
                 string arg=eles[1];
                 if (find(variableslist.begin(),variableslist.end(),arg)==variableslist.end()) {
-                    error("vodka.error.variables.not_declared : "+arg+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1},{line.find(arg)+1},{arg.length()});
+                    error("vodka.error.variables.not_declared : "+arg+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1});
                     return -1;
+                }
+                if (eles[1].substr(0,2)=="$$" || eles[1].substr(0,1)=="$") {
+                    error("vodka.error.variables.constant : Can't modify an constant.",file,{line},{maincell.start.line+(int)i+1});
                 }
                 check();
                 log("Checking content datatype...",2,{(int)i+1,3},{maincell.content.size(),4});
                 if (variablesdict[arg].thing!="vodint" || variablesdict[arg].intele.typeinfo.typenames!="vodint") {
-                    error("vodka.error.kernel.invert.wrong_type : "+arg+" isn't vodint type.",file,{line},{maincell.start.line+(int)i+1},{line.find(arg)+1},{arg.length()});
+                    error("vodka.error.kernel.invert.wrong_type : "+arg+" isn't vodint type.",file,{line},{maincell.start.line+(int)i+1});
                     return -1;
                 }
                 check();
@@ -838,7 +956,7 @@ int main (int argc,char* argv[]) {
                 instructions.push_back(syscont);
                 check();
             } else {
-                error("vodka.error.kernel.add.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
+                error("vodka.error.kernel.invert.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }
         } else if (line.substr(0,8)=="multiply") {
@@ -851,150 +969,199 @@ int main (int argc,char* argv[]) {
                 for (int y=1;y<eles.size();++y) {
                     arg=eles[y];
                     if (find(variableslist.begin(),variableslist.end(),arg)==variableslist.end()) {
-                        error("vodka.error.variables.not_declared : "+arg+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1},{line.find(arg)+1},{arg.length()});
+                        error("vodka.error.variables.not_declared : "+arg+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1});
                         return -1;
                     }
+                }
+                if (eles[1].substr(0,2)=="$$" || eles[1].substr(0,1)=="$") {
+                    error("vodka.error.variables.constant : Can't modify an constant.",file,{line},{maincell.start.line+(int)i+1});
                 }
                 check();
                 log("Checking content datatype...",2,{(int)i+1,3},{maincell.content.size(),4});
                 vector<string> argsname(eles.begin()+1,eles.end());
                 for (auto a:argsname) {
                     if (variablesdict[a].thing!="vodint" || variablesdict[a].intele.typeinfo.typenames!="vodint") {
-                        error("vodka.error.instruction.multiply.wrong_type : "+a+" isn't vodint type.",file,{line},{maincell.start.line+(int)i+1},{line.find(a)+1},{a.length()});
+                        error("vodka.error.instruction.multiply.wrong_type : "+a+" isn't vodint type.",file,{line},{maincell.start.line+(int)i+1});
                         return -1;
                     }
                 }
                 check();
-                log("Registering systems call for this instructions...",2,{(int)i+1,4},{maincell.content.size(),4});
-                vector<string> uidargs;
-                for (auto a:argsname) {
-                    uidargs.push_back(variablesdict[a].intele.varinfo.uuid);
-                }
-                string outputuid=uidargs[0];
-                vodka::syscalls::ASSIGN assigncall;
-                assigncall.output_uid=outputuid;
-                assigncall.value="0";
-                vodka::syscalls::syscall_container syscont;
-                syscont.thing="ASSIGN";
-                syscont.assignele=assigncall;
-                instructions.push_back(syscont);
-                if (variablesdict[argsname[2]].intele.value!="0") {
-                    if (variablesdict[argsname[1]].intele.value.substr(0,1)=="-") {
-                        vodka::syscalls::INVERT invertcall;
-                        invertcall.uid=uidargs[1];
-                        vodka::syscalls::syscall_container syscont;
-                        syscont.invertele=invertcall;
-                        syscont.thing="INVERT";
-                        instructions.push_back(syscont);
+                if (variablesdict[eles[2]].intele.varinfo.algo_dependant==false && variablesdict[eles[3]].intele.varinfo.algo_dependant==false) {
+                    log("Registering systems call for this instructions...",2,{(int)i+1,4},{maincell.content.size(),4});
+                    vector<string> uidargs;
+                    for (auto a:argsname) {
+                        uidargs.push_back(variablesdict[a].intele.varinfo.uuid);
                     }
-                    if (variablesdict[argsname[2]].intele.value.substr(0,1)=="-") {
-                        vodka::syscalls::INVERT invertcall;
-                        invertcall.uid=uidargs[2];
-                        vodka::syscalls::syscall_container syscont;
-                        syscont.invertele=invertcall;
-                        syscont.thing="INVERT";
-                        instructions.push_back(syscont);
-                    }
+                    string outputuid=uidargs[0];
                     vodka::syscalls::ASSIGN assigncall;
-                    string countuid=to_string(genuid());
-                    assigncall.output_uid=countuid;
+                    assigncall.output_uid=outputuid;
                     assigncall.value="0";
                     vodka::syscalls::syscall_container syscont;
                     syscont.thing="ASSIGN";
                     syscont.assignele=assigncall;
                     instructions.push_back(syscont);
-                    vodka::syscalls::ASSIGN assigncall2;
-                    string one_const=to_string(genuid());
-                    assigncall2.output_uid=one_const;
-                    assigncall2.value="1";
-                    vodka::syscalls::syscall_container syscont2;
-                    syscont2.thing="ASSIGN";
-                    syscont2.assignele=assigncall2;
-                    instructions.push_back(syscont2);
-                    vodka::syscalls::ASSIGN assigncall3;
-                    string two_const=to_string(genuid());
-                    assigncall3.output_uid=two_const;
-                    assigncall3.value="2";
-                    vodka::syscalls::syscall_container syscont3;
-                    syscont3.thing="ASSIGN";
-                    syscont3.assignele=assigncall3;
-                    instructions.push_back(syscont3);
-                    vector<string> uidtoadd={outputuid,uidargs[1]};
-                    vodka::syscalls::ADD addcall;
-                    addcall.output_uid=outputuid;
-                    addcall.argument_uid=uidtoadd;
-                    vodka::syscalls::syscall_container syscont4;
-                    syscont4.thing="ADD";
-                    syscont4.addele=addcall;
-                    instructions.push_back(syscont4);
-                    vector<string> uidtoadd2={countuid,one_const};
-                    vodka::syscalls::ADD addcall2;
-                    addcall2.output_uid=countuid;
-                    addcall2.argument_uid=uidtoadd2;
-                    vodka::syscalls::syscall_container syscont5;
-                    syscont5.thing="ADD";
-                    syscont5.addele=addcall2;
-                    instructions.push_back(syscont5);
-                    vodka::syscalls::BACK backcall;
-                    backcall.back_uid=two_const;
-                    backcall.var_uid=countuid;
-                    backcall.const_uid=uidargs[2];
-                    vodka::syscalls::syscall_container syscont6;
-                    syscont6.thing="BACK";
-                    syscont6.backele=backcall;
-                    instructions.push_back(syscont6);
-                    vodka::syscalls::FREE freecall;
-                    freecall.args_uid={countuid,one_const,two_const};
-                    vodka::syscalls::syscall_container syscont7;
-                    syscont7.thing="FREE";
-                    syscont7.freeele=freecall;
-                    instructions.push_back(syscont7);
-                    if (vodka::type::vodint::calculate_sign(variablesdict[argsname[1]].intele.value,variablesdict[argsname[2]].intele.value).substr(0,1)=="-") {
-                        vodka::syscalls::INVERT invertcall;
-                        invertcall.uid=outputuid;
+                    if (variablesdict[argsname[2]].intele.value!="0") {
+                        if (variablesdict[argsname[1]].intele.value.substr(0,1)=="-") {
+                            vodka::syscalls::INVERT invertcall;
+                            invertcall.uid=uidargs[1];
+                            vodka::syscalls::syscall_container syscont;
+                            syscont.invertele=invertcall;
+                            syscont.thing="INVERT";
+                            instructions.push_back(syscont);
+                        }
+                        if (variablesdict[argsname[2]].intele.value.substr(0,1)=="-") {
+                            vodka::syscalls::INVERT invertcall;
+                            invertcall.uid=uidargs[2];
+                            vodka::syscalls::syscall_container syscont;
+                            syscont.invertele=invertcall;
+                            syscont.thing="INVERT";
+                            instructions.push_back(syscont);
+                        }
+                        vodka::syscalls::ASSIGN assigncall;
+                        string countuid=to_string(genuid());
+                        assigncall.output_uid=countuid;
+                        assigncall.value="0";
                         vodka::syscalls::syscall_container syscont;
-                        syscont.invertele=invertcall;
-                        syscont.thing="INVERT";
+                        syscont.thing="ASSIGN";
+                        syscont.assignele=assigncall;
                         instructions.push_back(syscont);
+                        vodka::syscalls::ASSIGN assigncall2;
+                        string one_const=to_string(genuid());
+                        assigncall2.output_uid=one_const;
+                        assigncall2.value="1";
+                        vodka::syscalls::syscall_container syscont2;
+                        syscont2.thing="ASSIGN";
+                        syscont2.assignele=assigncall2;
+                        instructions.push_back(syscont2);
+                        vodka::syscalls::ASSIGN assigncall3;
+                        string two_const=to_string(genuid());
+                        assigncall3.output_uid=two_const;
+                        assigncall3.value="2";
+                        vodka::syscalls::syscall_container syscont3;
+                        syscont3.thing="ASSIGN";
+                        syscont3.assignele=assigncall3;
+                        instructions.push_back(syscont3);
+                        vector<string> uidtoadd={outputuid,uidargs[1]};
+                        vodka::syscalls::ADD addcall;
+                        addcall.output_uid=outputuid;
+                        addcall.argument_uid=uidtoadd;
+                        vodka::syscalls::syscall_container syscont4;
+                        syscont4.thing="ADD";
+                        syscont4.addele=addcall;
+                        instructions.push_back(syscont4);
+                        vector<string> uidtoadd2={countuid,one_const};
+                        vodka::syscalls::ADD addcall2;
+                        addcall2.output_uid=countuid;
+                        addcall2.argument_uid=uidtoadd2;
+                        vodka::syscalls::syscall_container syscont5;
+                        syscont5.thing="ADD";
+                        syscont5.addele=addcall2;
+                        instructions.push_back(syscont5);
+                        vodka::syscalls::BACK backcall;
+                        backcall.back_uid=two_const;
+                        backcall.var_uid=countuid;
+                        backcall.const_uid=uidargs[2];
+                        vodka::syscalls::syscall_container syscont6;
+                        syscont6.thing="BACK";
+                        syscont6.backele=backcall;
+                        instructions.push_back(syscont6);
+                        vodka::syscalls::FREE freecall;
+                        freecall.args_uid={countuid,one_const,two_const};
+                        vodka::syscalls::syscall_container syscont7;
+                        syscont7.thing="FREE";
+                        syscont7.freeele=freecall;
+                        instructions.push_back(syscont7);
+                        if (vodka::type::vodint::calculate_sign(variablesdict[argsname[1]].intele.value,variablesdict[argsname[2]].intele.value).substr(0,1)=="-") {
+                            vodka::syscalls::INVERT invertcall;
+                            invertcall.uid=outputuid;
+                            vodka::syscalls::syscall_container syscont;
+                            syscont.invertele=invertcall;
+                            syscont.thing="INVERT";
+                            instructions.push_back(syscont);
+                        }
+                        if (variablesdict[argsname[1]].intele.value.substr(0,1)=="-") {
+                            vodka::syscalls::INVERT invertcall;
+                            invertcall.uid=uidargs[1];
+                            vodka::syscalls::syscall_container syscont;
+                            syscont.invertele=invertcall;
+                            syscont.thing="INVERT";
+                            instructions.push_back(syscont);
+                        }
+                        if (variablesdict[argsname[2]].intele.value.substr(0,1)=="-") {
+                            vodka::syscalls::INVERT invertcall;
+                            invertcall.uid=uidargs[2];
+                            vodka::syscalls::syscall_container syscont;
+                            syscont.invertele=invertcall;
+                            syscont.thing="INVERT";
+                            instructions.push_back(syscont);
+                        }
                     }
-                    if (variablesdict[argsname[1]].intele.value.substr(0,1)=="-") {
-                        vodka::syscalls::INVERT invertcall;
-                        invertcall.uid=uidargs[1];
-                        vodka::syscalls::syscall_container syscont;
-                        syscont.invertele=invertcall;
-                        syscont.thing="INVERT";
-                        instructions.push_back(syscont);
-                    }
-                    if (variablesdict[argsname[2]].intele.value.substr(0,1)=="-") {
-                        vodka::syscalls::INVERT invertcall;
-                        invertcall.uid=uidargs[2];
-                        vodka::syscalls::syscall_container syscont;
-                        syscont.invertele=invertcall;
-                        syscont.thing="INVERT";
-                        instructions.push_back(syscont);
-                    }
+                    check();
+                } else {
+                    error("vodka.error.instruction.multiply.not_constance : Can't multiply variable without knowing their values.",file,{line},{maincell.start.line+(int)i+1});
+                    return -1;
                 }
-                check();
             } else {
-                error("vodka.error.kernel.add.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1},{0},{0});
+                error("vodka.error.instruction.multiply.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }        
+        } else if (line.substr(0,11)=="kernel.free") {
+            log("Checking system call syntax...",2,{(int)i+1,1},{maincell.content.size(),2});
+            auto eles=split(line," ");
+            if (eles.size()>=2) {
+                check();
+                log("Checking content existence...",2,{(int)i+1,2},{maincell.content.size(),2});
+                string arg;
+                for (int y=1;y<eles.size();++y) {
+                    arg=eles[y];
+                    if (find(variableslist.begin(),variableslist.end(),arg)==variableslist.end()) {
+                        error("vodka.error.variables.not_declared : "+arg+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1});
+                        return -1;
+                    }
+                }
+                if (eles[1].substr(0,2)=="$$") {
+                    error("vodka.error.variables.constant : Can't delete an constant.",file,{line},{maincell.start.line+(int)i+1});
+                }
+                check();
+                log("Registering system call...",2,{(int)i+1,4},{maincell.content.size(),3});
+                vector<string> argsuid;
+                for (auto a:vector<string>(eles.begin()+1,eles.end())) {
+                    if (variablesdict[a].thing=="vodint") {
+                        argsuid.push_back(variablesdict[a].intele.varinfo.uuid);
+                    }
+                }
+                vodka::syscalls::FREE freecall;
+                freecall.args_uid=argsuid;
+                vodka::syscalls::syscall_container syscont;
+                syscont.freeele=freecall;
+                syscont.thing="FREE";
+                instructions.push_back(syscont);
+                for (auto a:freecall.args_uid) {variablesdict.erase(a);variableslist.erase(remove(variableslist.begin(),variableslist.end(),a),variableslist.end());};
+                check();
+            } else {
+                error("vodka.error.kernel.divide.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
+                return -1;
+            }
         } else {
-            error("vodka.error.function.unknow : Unknow function.",file,{line},{maincell.start.line+(int)i+1},{1},{split(line," ")[0].length()});
+            error("vodka.error.function.unknow : Unknow function.",file,{line},{maincell.start.line+(int)i+1});
             return -1;
         }
     }
     //* Writing output file
-    log("Writing data section :");
+    log("Writing variables :");
     final.push_back("data:");
     int a=1;
     for (auto i:variablesdict) {
-        log("Writing "+i.second.intele.varinfo.uuid+"...",1,{a},{variablesdict.size()});
-        if (i.second.intele.varinfo.algo_dependant==false) {
-            final.push_back(i.second.intele.varinfo.uuid+"="+i.second.intele.value);
+        if (i.second.thing=="vodint") {
+            if (i.second.intele.varinfo.write==true) {
+                log("Writing "+i.second.intele.varinfo.uuid+"...",1,{a},{variablesdict.size()});
+                if (i.second.intele.varinfo.define==true) {
+                    final.push_back(i.second.intele.varinfo.uuid+"="+i.second.intele.value);
+                }
+                a=a+1;
+                check();
+            }
         }
-        a=a+1;
-        check();
     }
     final.push_back("enddata");
     log("Writing code section :");
@@ -1028,77 +1195,38 @@ int main (int argc,char* argv[]) {
     } else if (mode=="json") {
         log("Converting to json format :");
         a=1;
-        for (const auto& line:final) {
+        for (const string& line:final) {
             auto now=chrono::system_clock::now();
             time_t now_c=chrono::system_clock::to_time_t(now);
             tm utc=*std::gmtime(&now_c);
             stringstream ss;
             ss<<put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
             log("Converting line "+to_string(a)+"...",1,{a},{final.size()});
-            json_ints.push_back({{"type","metadata"},{"vodka_version","0.2 beta 4"},{"json_version","1"},{"source_file",file},{"timestamp",ss.str()}});
-            if (line.substr(0,4)=="type") {
-                vodka::json::json_container jsonth;
-                jsonth.type="kernel_symbol";
-                jsonth.intname="type";
-                auto eles=split(line," ");
-                jsonth.args={eles[1]};
-                json_ints.push_back(jsonth.syntax());
-            } else if (line.substr(0,5)=="args:") {
-                vodka::json::json_container jsonth;
-                jsonth.type="kernel_symbol";
-                jsonth.intname="args:";
-                jsonth.args={"<nothing>"};
-                json_ints.push_back(jsonth.syntax());
-            } else if (line.substr(0,7)=="endargs") {
-                vodka::json::json_container jsonth;
-                jsonth.type="kernel_symbol";
-                jsonth.intname="endargs";
-                jsonth.args={"<nothing>"};
-                json_ints.push_back(jsonth.syntax());
-            } else if (line.substr(0,5)=="data:") {
-                vodka::json::json_container jsonth;
-                jsonth.type="kernel_symbol";
-                jsonth.intname="data:";
-                jsonth.args={"<nothing>"};
-                json_ints.push_back(jsonth.syntax());
-            } else if (line.substr(0,7)=="enddata") {
-                vodka::json::json_container jsonth;
-                jsonth.type="kernel_symbol";
-                jsonth.intname="enddata";
-                jsonth.args={"<nothing>"};
-                json_ints.push_back(jsonth.syntax());
-            } else if (line.substr(0,5)=="code:") {
-                vodka::json::json_container jsonth;
-                jsonth.type="kernel_symbol";
-                jsonth.intname="code:";
-                jsonth.args={"<nothing>"};
-                json_ints.push_back(jsonth.syntax());
-            } else if (line.substr(0,7)=="endcode") {
-                vodka::json::json_container jsonth;
-                jsonth.type="kernel_symbol";
-                jsonth.intname="endcode";
-                jsonth.args={"<nothing>"};
-                json_ints.push_back(jsonth.syntax());
-            } else if (std::isalpha(line[0]) && std::isupper(line[0])) {
-                vodka::json::json_container jsonth;
-                jsonth.type="system_call";
-                jsonth.intname=split(line," ")[0];
-                auto eles=split(line," ");
-                jsonth.args=vector<string>(eles.begin()+1,eles.end());
-                json_ints.push_back(jsonth.syntax());
-            } else {
-                vodka::json::json_container jsonth;
-                jsonth.type="variable";
-                jsonth.intname=split(line,"=")[0];
-                auto eles=split(line,"=");
-                string otherside;
-                for (int i=1;i<eles.size();++i) {
-                    otherside=otherside+eles[i];
+            json_ints["metadata"]={{"type","metadata"},{"vodka_version","0.2 beta 5"},{"json_version","2"},{"source_file",file},{"timestamp",ss.str()}};
+            vector<string> kernel_symbol={"code:","endcode","args:","endargs","data:","enddata"};
+            if (find(kernel_symbol.begin(),kernel_symbol.end(),line)==kernel_symbol.end() && line.substr(0,4)!="type") {
+                if (std::isalpha(line[0]) && std::isupper(line[0])) {
+                    vodka::json::json_container jsonth;
+                    jsonth.type="system_call";
+                    jsonth.intname=split(line," ")[0];
+                    auto eles=split(line," ");
+                    jsonth.args=vector<string>(eles.begin()+1,eles.end());
+                    json_ints[to_string(a)+":"+to_string(genuid())]=jsonth.syntax();
+                    a=a+1;
+                } else {
+                    vodka::json::json_container jsonth;
+                    jsonth.type="variable";
+                    jsonth.intname=split(line,"=")[0];
+                    auto eles=split(line,"=");
+                    string otherside;
+                    for (int i=1;i<eles.size();++i) {
+                        otherside=otherside+eles[i];
+                    }
+                    jsonth.args={otherside};
+                    json_ints[to_string(a)+":"+to_string(genuid())]=jsonth.syntax();
+                    a=a+1;
                 }
-                jsonth.args={otherside};
-                json_ints.push_back(jsonth.syntax());
             }
-            a=a+1;
             check();
         }
         log("Writing json file...");
