@@ -98,6 +98,27 @@ namespace vodka {
                 info.support_multiple_argument=true;
             }
         };
+        class ABS {
+            public:
+                string args_uid;
+                syscall info;
+            ABS() {
+                info.name="ABS";
+                info.support_multiple_argument=true;
+            }
+        };
+        class DIVMOD {
+            public:
+                string quouid;
+                string resuid;
+                string divis;
+                string divid;
+                syscall info;
+            DIVMOD() {
+                info.name="DIVMOD";
+                info.support_multiple_argument=true;
+            }
+        };
         class syscall_container {
             public:
                 string thing;
@@ -108,6 +129,8 @@ namespace vodka {
                 INVERT invertele;
                 BACK backele;
                 DUPLICATE duplicateele;
+                ABS absele;
+                DIVMOD divmodele;
             string syntax() {
                 if (thing=="PRINT") {
                     string args;
@@ -138,6 +161,10 @@ namespace vodka {
                     return backele.info.name+" "+backele.var_uid+" "+backele.const_uid+" "+backele.back_uid;
                 } else if (thing=="DUPLICATE") {
                     return duplicateele.info.name+" "+duplicateele.output_uid+" "+duplicateele.source_uid;
+                } else if (thing=="ABS") {
+                    return absele.info.name+" "+absele.args_uid;
+                } else if (thing=="DIVMOD") {
+                    return divmodele.info.name+" "+divmodele.quouid+" "+divmodele.resuid+" "+divmodele.divid+" "+divmodele.divis;
                 } else {
                     return "error";
                 }
@@ -430,7 +457,7 @@ int main (int argc,char* argv[]) {
     while ((option=getopt(argc,argv,"hjrdvVf:s:o:"))!=-1) {
         switch (option) {
         case 'h':
-            cout<<"Vodka v0.2 beta 5 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file] [-v set verbose mode to reduced] [-V set verbose mode to all] [-d enable debug mode] [-j export output to a json file specified with -o] [-r disable define replacement]"<<endl;
+            cout<<"Vodka v0.2 beta 6 - Vodka Objective Dictionary for Kernel Analyser\nHow to use : vodka [-h] [-f object_to_find (not working for the moment)] [-s source file] [-o output file] [-v set verbose mode to reduced] [-V set verbose mode to all] [-d enable debug mode] [-j export output to a json file specified with -o] [-r disable define replacement]"<<endl;
             return 0;
         case 'f':
             mode="find";
@@ -1139,7 +1166,89 @@ int main (int argc,char* argv[]) {
                 for (auto a:freecall.args_uid) {variablesdict.erase(a);variableslist.erase(remove(variableslist.begin(),variableslist.end(),a),variableslist.end());};
                 check();
             } else {
-                error("vodka.error.kernel.divide.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
+                error("vodka.error.kernel.free.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
+                return -1;
+            }
+        } else if (line.substr(0,10)=="kernel.abs") {
+            log("Checking system call syntax...",2,{(int)i+1,1},{maincell.content.size(),4});
+            auto eles=split(line," ");
+            if (eles.size()==2) {
+                check();
+                log("Checking content existence...",2,{(int)i+1,2},{maincell.content.size(),4});
+                string arg=eles[1];
+                if (find(variableslist.begin(),variableslist.end(),arg)==variableslist.end()) {
+                    error("vodka.error.variables.not_declared : "+arg+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1});
+                    return -1;
+                }
+                if (eles[1].substr(0,2)=="$$" || eles[1].substr(0,1)=="$") {
+                    error("vodka.error.variables.constant : Can't modify an constant.",file,{line},{maincell.start.line+(int)i+1});
+                }
+                check();
+                log("Checking content datatype...",2,{(int)i+1,3},{maincell.content.size(),4});
+                if (variablesdict[arg].thing!="vodint" || variablesdict[arg].intele.typeinfo.typenames!="vodint") {
+                    error("vodka.error.kernel.abs.wrong_type : "+arg+" isn't vodint type.",file,{line},{maincell.start.line+(int)i+1});
+                    return -1;
+                }
+                check();
+                log("Registering system call...",2,{(int)i+1,4},{maincell.content.size(),4});
+                string uidarg=variablesdict[arg].intele.varinfo.uuid;
+                vodka::syscalls::ABS abscall;
+                abscall.args_uid=uidarg;
+                vodka::syscalls::syscall_container syscont;
+                syscont.thing="ABS";
+                syscont.absele=abscall;
+                instructions.push_back(syscont);
+                check();
+            } else {
+                error("vodka.error.kernel.abs.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
+                return -1;
+            }
+        } else if (line.substr(0,13)=="kernel.divmod") {
+            log("Checking system call syntax...",2,{(int)i+1,1},{maincell.content.size(),4});
+            auto eles=split(line," ");
+            if (eles.size()==5) {
+                check();
+                log("Checking content existence...",2,{(int)i+1,2},{maincell.content.size(),4});
+                auto arg=vector<string>(eles.begin()+1,eles.end());
+                for (int y=0;y<arg.size();++y) {
+                    if (find(variableslist.begin(),variableslist.end(),arg[y])==variableslist.end()) {
+                        error("vodka.error.variables.not_declared : "+arg[y]+" wasn't declared before instruction.",file,{line},{maincell.start.line+(int)i+1});
+                        return -1;
+                    }
+                }
+                if (eles[1].substr(0,2)=="$$" || eles[1].substr(0,1)=="$" || eles[2].substr(0,2)=="$$" || eles[2].substr(0,1)=="$") {
+                    error("vodka.error.variables.constant : Can't modify an constant.",file,{line},{maincell.start.line+(int)i+1});
+                }
+                check();
+                log("Checking content datatype...",2,{(int)i+1,3},{maincell.content.size(),4});
+                for (int y=0;y<arg.size();++y) {
+                    if (variablesdict[arg[y]].thing!="vodint" || variablesdict[arg[y]].intele.typeinfo.typenames!="vodint") {
+                        error("vodka.error.kernel.divmod.wrong_type : "+arg[y]+" isn't vodint type.",file,{line},{maincell.start.line+(int)i+1});
+                        return -1;
+                    }
+                }
+                if (arg[0]==arg[1]) {
+                    error("vodka.error.kernel.divmod.same_output : the two output variables can't be the same.",file,{line},{maincell.start.line+(int)i+1});
+                    return -1;
+                }
+                check();
+                log("Registering system call...",2,{(int)i+1,4},{maincell.content.size(),4});
+                string quouid=variablesdict[arg[0]].intele.varinfo.uuid;
+                string resuid=variablesdict[arg[1]].intele.varinfo.uuid;
+                string divid=variablesdict[arg[2]].intele.varinfo.uuid;
+                string divis=variablesdict[arg[3]].intele.varinfo.uuid;
+                vodka::syscalls::DIVMOD divmodcall;
+                divmodcall.quouid=quouid;
+                divmodcall.resuid=resuid;
+                divmodcall.divid=divid;
+                divmodcall.divis=divis;
+                vodka::syscalls::syscall_container syscont;
+                syscont.thing="DIVMOD";
+                syscont.divmodele=divmodcall;
+                instructions.push_back(syscont);
+                check();
+            } else {
+                error("vodka.error.kernel.abs.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }
         } else {
