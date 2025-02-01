@@ -12,3 +12,5 @@ To see the full list of argument :
 ```
 vodka -h
 ```
+
+To compile, use the ```comp.sh``` file. To compile only library, use ```comp.sh library```
