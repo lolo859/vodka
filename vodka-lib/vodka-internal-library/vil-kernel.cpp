@@ -161,9 +161,11 @@ bool vodka::library::kernel::traitement::free_int() {
             }
             if (eles[y].substr(0,2)=="$$") {
                 error("vodka.error.variables.constant : Can't delete an kernel constant.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1});
+                return false;
             }
             if (call.variablesdict_context[eles[1]].thing=="vodarg") {
                 error("vodka.error.variables.argument : Can't delete an argument.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1});
+                return false;
             }
         }
         log("Registering system call.",call.verbose_context,call.main_logstep_context,call.last_logstep_context,2,{(int)call.iteration_number_context+1,4},{call.cell_context.content.size(),3});
