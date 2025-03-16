@@ -1,4 +1,5 @@
 #include "vodka-lib.h"
+#include "../dependencies/termcolor.hpp"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -38,26 +39,6 @@ namespace inside_utils {
 }
 using namespace inside_utils;
 //* Utilities
-//* Error output function
-void vodka::utilities::error(const string& error,const string& file,vector<string> lines_content,vector<int> lines) {
-    string linestr="";
-    if (lines.size()>1) {
-        for (size_t i=0;i<lines.size();++i) {
-            if (i==lines.size()-1) {
-                linestr=linestr+to_string(lines[i])+",";
-            } else {
-                linestr=linestr+to_string(lines[i])+", ";
-            }
-        }
-    } else {
-        linestr=to_string(lines[0]);
-    }
-    cout<<"\nFile "+file+":"+to_string(lines[0])+", line(s) "+linestr+" an error occured :"<<endl;
-    for (size_t y=0;y<lines.size();++y) {
-        cout<<"  "<<lines[y]<<" | "<<lines_content[y]<<endl;
-    }
-    cout<<error<<endl;
-}
 //* UUID generator
 boost::uuids::uuid vodka::utilities::genuid() {
     boost::uuids::random_generator ran;
@@ -97,13 +78,13 @@ void vodka::utilities::debuglog(const string& text,int line,const string& cell,b
         if (debug_info==true) {
             if (verbose=="e") {
                 string texti=text.substr(1,text.length()-1);
-                cout<<"Debug line "+to_string(line)+" in cell "+cell+" from file "+filesystem::absolute(file).string()+" : "+texti<<endl;
+                cout<<"Debug line "+to_string(line)+" in cell "<<termcolor::magenta<<termcolor::bold<<cell<<termcolor::reset<<" from file "<<termcolor::blue<<termcolor::bold<<filesystem::absolute(file).string()<<termcolor::reset<<" : "+texti<<endl;
             } else if (verbose=="r") {
                 string texti=text.substr(1,text.length()-1);
-                cout<<endl<<"Debug line "+to_string(line)+" in cell "+cell+" "+filesystem::absolute(file).string()+" : "+texti<<endl;
+                cout<<endl<<"Debug line "+to_string(line)+" in cell "<<termcolor::magenta<<termcolor::bold<<cell<<termcolor::reset<<" from file "<<termcolor::blue<<termcolor::bold<<filesystem::absolute(file).string()<<termcolor::reset<<" : "+texti<<endl;
             } else if (verbose=="a") {
                 string texti=text.substr(1,text.length()-1);
-                cout<<endl<<"Debug line "+to_string(line)+" in cell "+cell+" "+filesystem::absolute(file).string()+" : "+texti;
+                cout<<endl<<"Debug line "+to_string(line)+" in cell "<<termcolor::magenta<<termcolor::bold<<cell<<termcolor::reset<<" from file "<<termcolor::blue<<termcolor::bold<<filesystem::absolute(file).string()<<termcolor::reset<<" : "+texti;
             }
         } else {
             if (verbose=="e") {

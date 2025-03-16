@@ -12,6 +12,7 @@ using namespace std;
 using namespace vodka::utilities;
 using namespace vodka::variables;
 using namespace vodka::syscalls;
+using namespace vodka::errors;
 //* Some necessary functions
 namespace inside_instruction {
     std::vector<std::string> split(const std::string& str,const std::string& delimiter) {
@@ -40,7 +41,9 @@ namespace inside_instruction {
 };
 using namespace inside_instruction;
 //* Private functions for analysing each instructions
-bool vodka::instructions::instruction_traitement::multiply() {
+bool vodka::instructions::instruction_traitement::multiply(sources_stack lclstack) {
+    auto srclclstack=lclstack;
+    srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
     log("Checking instruction syntax.",call.verbose_context,call.main_logstep_context,call.last_logstep_context,2,{(int)call.iteration_number_context+1,1},{call.cell_context.content.size(),4});
     auto eles=split(line," ");
     if (eles.size()==4) {
@@ -49,19 +52,19 @@ bool vodka::instructions::instruction_traitement::multiply() {
         for (int y=1;y<eles.size();++y) {
             arg=eles[y];
             if (find(call.variableslist_context.begin(),call.variableslist_context.end(),arg)==call.variableslist_context.end()) {
-                error("vodka.error.variables.not_declared : "+arg+" wasn't declared before instruction.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1});
+                raise(error_container("vodka.error.variables.not_declared : "+arg+" wasn't declared before instruction.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1},srclclstack));
                 return false;
             }
         }
         if (eles[1].substr(0,2)=="$$" || eles[1].substr(0,1)=="$") {
-            error("vodka.error.variables.constant : Can't modify an constant.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1});
+            raise(error_container("vodka.error.variables.constant : Can't modify an constant.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1},srclclstack));
             return false;
         }
         log("Checking content datatype.",call.verbose_context,call.main_logstep_context,call.last_logstep_context,2,{(int)call.iteration_number_context+1,3},{call.cell_context.content.size(),4});
         vector<string> argsname(eles.begin()+1,eles.end());
         for (auto a:argsname) {
             if (call.variablesdict_context[a].thing!="vodint" || call.variablesdict_context[a].intele.typeinfo.typenames!="vodint") {
-                error("vodka.error.instruction.multiply.wrong_type : "+a+" isn't vodint type.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1});
+                raise(error_container("vodka.error.instruction.multiply.wrong_type : "+a+" isn't vodint type.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1},srclclstack));
                 return false;
             }
         }
@@ -150,7 +153,7 @@ bool vodka::instructions::instruction_traitement::multiply() {
                 syscont7.thing="FREE";
                 syscont7.freeele=freecall;
                 syscalls_output.push_back(syscont7);
-                if (vodka::type::vodint::calculate_sign(call.variablesdict_context[argsname[1]].intele.value,call.variablesdict_context[argsname[2]].intele.value).substr(0,1)=="-") {
+                if (vodka::type::vodint::calculate_sign(call.variablesdict_context[argsname[1]].intele.value,call.variablesdict_context[argsname[2]].intele.value,srclclstack).substr(0,1)=="-") {
                     vodka::syscalls::INVERT invertcall;
                     invertcall.uid=outputuid;
                     vodka::syscalls::syscall_container syscont;
@@ -179,17 +182,19 @@ bool vodka::instructions::instruction_traitement::multiply() {
                 return true;
             }
         } else {
-            error("vodka.error.instruction.multiply.not_constance : Can't multiply variable without knowing their values.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1});
+            raise(error_container("vodka.error.instruction.multiply.not_constance : Can't multiply variable without knowing their values.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1},srclclstack));
             return false;
         }
     } else {
-        error("vodka.error.instruction.multiply.invalid_syntax : Invalid syntax.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1});
+        raise(error_container("vodka.error.instruction.multiply.invalid_syntax : Invalid syntax.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1},srclclstack));
         return false;
     }
     return false;
 }
 //* Main function for parsing vodka instruction
-bool vodka::instructions::instruction_traitement::traitement() {
+bool vodka::instructions::instruction_traitement::traitement(sources_stack lclstack) {
+    auto srclclstack=lclstack;
+    srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
     line=call.type_analyser.line_analyse.content;
     if (call.type_analyser.checked==false) {
         return false;
@@ -198,7 +203,7 @@ bool vodka::instructions::instruction_traitement::traitement() {
         return false;
     }
     if (line.substr(0,8)=="multiply") {
-        return multiply();
+        return multiply(srclclstack);
     }
     return false;
 }

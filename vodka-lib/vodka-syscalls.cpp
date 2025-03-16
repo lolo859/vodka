@@ -71,6 +71,10 @@ string vodka::syscalls::syscall_container::syntax() {
         return absele.info.name+" "+absele.uid;
     } else if (thing=="DIVMOD") {
         return divmodele.info.name+" "+divmodele.quotient_uid+" "+divmodele.rest_uid+" "+divmodele.dividend_uid+" "+divmodele.divisor_uid;
+    } else if (thing=="TOINT") {
+        return tointele.info.name+" "+tointele.uid_output+" "+tointele.uid_source;
+    } else if (thing=="TODEC") {
+        return todecele.info.name+" "+todecele.uid_output+" "+todecele.uid_source;
     } else {
         return "error";
     }

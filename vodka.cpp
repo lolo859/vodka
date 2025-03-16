@@ -41,12 +41,15 @@ void replaceall(std::string &str,const std::string &from,const std::string &to) 
 //* Some variables
 using namespace std;
 using namespace vodka::utilities;
+using namespace vodka::errors;
+string error_source="vodka-transcoder";
 string verbose="e";
 bool debugmode=false;
 int x=1;
 string last;
 string sublast;
 string file;
+sources_stack srcstack;
 //* Some vectors and maps
 vector<string> mainargslist;
 map<string,vodka::variables::element> mainargsdict;
@@ -69,22 +72,24 @@ vector<cellule> cells;
 vector<string> cellnames;
 cellule maincell;
 //* Read file
-int read_file(string output,string mode) {
+int read_file(string output,string mode,sources_stack srclclstack) {
+    auto lclstack=srclclstack;
+    lclstack.add(__PRETTY_FUNCTION__,__FILE__);
     //* Source file fetching
     if (output=="" && mode=="compile" && mode=="jsonvodka" && mode=="jsonkernel") {
-        cout<<"Please specify an output file for compiled code."<<endl;
+        raise(error_container("vodka.error.file.output_not_provided","<no file>",{"<no line affected>"},{0},lclstack));
         return -1;
     }
     log("Checking if source file exist.",verbose,x,last);
     if (filesystem::exists(file)==false) {
-        cout<<"Source file doesn't exist."<<endl;
+        raise(error_container("Source file doesn't exist.",file,{"<no line affected>"},{0},lclstack));
         return -1;
     }
     x=x+1;
     log("Checking file readability.",verbose,x,last);
     ifstream filee(file.c_str());
     if (filee.is_open()==false) {
-        cout<<"File can't be open."<<endl;
+        raise(error_container("File can't be open.",file,{"<no line affected>"},{0},lclstack));
         return -1;
     }
     x=x+1;
@@ -106,7 +111,9 @@ int read_file(string output,string mode) {
     return 0;
 }
 //* Detect symbols 
-int detect_symbol() {
+int detect_symbol(sources_stack srclclstack) {
+    auto lclstack=srclclstack;
+    lclstack.add(__PRETTY_FUNCTION__,__FILE__);
     log("Detecting symbols.",verbose,x,last);
     for (size_t i=0;i<content.size();++i) {
         string line=content[i];
@@ -121,7 +128,7 @@ int detect_symbol() {
             log("Checking symbol.",verbose,x,last,2,{(int)i+1,2},{content.size(),3});
             if (find(symbollist.begin(),symbollist.end(),temp.type)==symbollist.end()) {
                 int linenum=i+1;
-                error("vodka.error.symbol.unknow_symbol : Unknow symbol found : "+temp.type,file,{line},{linenum});
+                raise(error_container("vodka.error.symbol.unknow_symbol : Unknow symbol found : "+temp.type,file,{line},{linenum},lclstack));
                 return -1;
             } else {
                 log("Saving symbol.",verbose,x,last,2,{(int)i+1,3},{content.size(),3});
@@ -141,7 +148,7 @@ int detect_symbol() {
                 replacement[eles[1]]=eles[2];
                 log("Replacement found. "+eles[1]+" will be replaced with "+eles[2]+".",verbose,x,last,2,{(int)i+1,1},{symbols.size(),1});
             } else {
-                error("vodka.error.vodefine.invalid_syntax : Invalid syntax for define replacement declaration.",file,{symbols[i].content},{symbols[i].line});
+                raise(error_container("vodka.error.vodefine.invalid_syntax : Invalid syntax for define replacement declaration.",file,{symbols[i].content},{symbols[i].line},lclstack));
                 return -1;
             }
         } else {
@@ -156,14 +163,20 @@ int detect_symbol() {
             if (typefound==false) {
                 typefound=true;
             } else {
-                error("vodka.error.vodtype.confusion : A vodka program can only contain one VODTYPE symbol.",file,{symbols[i].content},{symbols[i].line});
+                raise(error_container("vodka.error.vodtype.confusion : A vodka program can only contain one VODTYPE symbol.",file,{symbols[i].content},{symbols[i].line},lclstack));
                 return -1;
             }
         }
     }
+    if (typefound==false) {
+        raise(error_container("vodka.error.vodtype.not_found : Can't find VODTYPE symbol.",file,{"<no line affected>"},{0},lclstack));
+        return -1;
+    }
     return 0;
 }
-int detect_program_type() {
+int detect_program_type(sources_stack srclclstack) {
+    auto lclstack=srclclstack;
+    lclstack.add(__PRETTY_FUNCTION__,__FILE__);
     log("Detecting program type :",verbose,x,last);
     for (size_t i=0;i<symbols.size();++i) {
         log("Checking if line contain type symbol :",verbose,x,last,1,{(int)i+1},{symbols.size()});
@@ -171,12 +184,12 @@ int detect_program_type() {
             log("Checking syntax.",verbose,x,last,2,{(int)i+1,1},{symbols.size(),3});
             auto ele=split(symbols[i].content," ");
             if (ele.size()!=2) {
-                error("vodka.error.vodtype.invalid_syntax : Invalid syntax for program type declaration.",file,{symbols[i].content},{symbols[i].line});
+                raise(error_container("vodka.error.vodtype.invalid_syntax : Invalid syntax for program type declaration.",file,{symbols[i].content},{symbols[i].line},lclstack));
                 return -1;
             }
             log("Checking program type.",verbose,x,last,2,{(int)i+1,2},{symbols.size(),3});
             if (find(typelist.begin(),typelist.end(),ele[1])==typelist.end()) {
-                error("vodka.error.vodtype.unknow_type : Unknow type : "+ele[1],file,{symbols[i].content},{symbols[i].line});
+                raise(error_container("vodka.error.vodtype.unknow_type : Unknow type : "+ele[1],file,{symbols[i].content},{symbols[i].line},lclstack));
                 return -1;
             }
             log("Saving program type.",verbose,x,last,2,{(int)i+1,3},{symbols.size(),3});
@@ -188,7 +201,9 @@ int detect_program_type() {
     final.push_back("type "+program_type);
     return 0;
 }
-int detect_cells() {
+int detect_cells(sources_stack srclclstack) {
+    auto lclstack=srclclstack;
+    lclstack.add(__PRETTY_FUNCTION__,__FILE__);
     log("Detecting cells :",verbose,x,last);
     for (size_t i=0;i<symbols.size();++i) {
         if (symbols[i].type=="VODSTART") {
@@ -204,7 +219,7 @@ int detect_cells() {
                 if (args.size()>1) {
                     temp.name=args[1];
                 } else {
-                    error("vodka.error.vodstart.name_not_found : Can't find cell's name.",file,{symbols[i].content},{symbols[i].line});
+                    raise(error_container("vodka.error.vodstart.name_not_found : Can't find cell's name.",file,{symbols[i].content},{symbols[i].line},lclstack));
                     return -1;
                 }
                 log("Checking if an cell with the same name already exist in the program.",verbose,x,last,1,{5},{10});
@@ -226,7 +241,7 @@ int detect_cells() {
                     lineerror.push_back(temp.start.line);
                     indicatorpos.push_back(11+to_string(temp.start.line).length()-1);
                     indicatorlen.push_back(args[1].length());
-                    error("vodka.error.cell.confusion : An existing cell with the same name already exists.",file,contenterror,lineerror);
+                    raise(error_container("vodka.error.cell.confusion : An existing cell with the same name already exists.",file,contenterror,lineerror,lclstack));
                     return -1;
                 }
                 log("Detecting cell argument.",verbose,x,last,1,{6},{10});
@@ -271,22 +286,26 @@ int detect_cells() {
                     }
                 }
             } else {
-                error("vodka.error.vodend.not_found : Can't find corresponding VODEND symbol to the previous VODSTART.",file,{symbols[i].content},{symbols[i].line});
+                raise(error_container("vodka.error.vodend.not_found : Can't find corresponding VODEND symbol to the previous VODSTART.",file,{symbols[i].content},{symbols[i].line},lclstack));
                 return -1;
             }
         }
     }
     return 0;
 }
-int verify_main_cell() {
+int verify_main_cell(sources_stack srclclstack) {
+    auto lclstack=srclclstack;
+    lclstack.add(__PRETTY_FUNCTION__,__FILE__);
     log("Verifying if program contain a main cell.",verbose,x,last);
     if (maincell.name!="main") {
-        error("vodka.error.main.not_found : Can't find the main cell.",file,{"<no line affected>"},{0});
+        raise(error_container("vodka.error.main.not_found : Can't find the main cell.",file,{"<no line affected>"},{0},lclstack));
         return -1;
     }
     return 0;
 }
-int make_args_section(bool replace) {
+int make_args_section(bool replace,sources_stack srclclstack) {
+    auto lclstack=srclclstack;
+    lclstack.add(__PRETTY_FUNCTION__,__FILE__);
     log("Writing args section.",verbose,x,last);
     for (auto argm:mainargsdict) {
         final.push_back(argm.second.argele.varinfo.uuid);
@@ -315,6 +334,8 @@ int make_args_section(bool replace) {
 }
 //* Main function
 int main (int argc,char* argv[]) {
+    auto lclstack=srcstack;
+    lclstack.add(__PRETTY_FUNCTION__,__FILE__);
     string output="";
     int option;
     bool replace=true;
@@ -362,37 +383,33 @@ int main (int argc,char* argv[]) {
             return -1;;
         }
     }
-    int readedFile=read_file(output,mode);
+    int readedFile=read_file(output,mode,lclstack);
     if (readedFile==-1) {
         return -1;
     }
     x=x+1;
-    int detectedSymbols=detect_symbol();
-    if (readedFile==-1) {
-        return -1;
-    }
-    if (typefound==false) {
-        error("vodka.error.vodtype.not_found : Can't find VODTYPE symbol.",file,{"<no line affected>"},{0});
+    int detectedSymbols=detect_symbol(lclstack);
+    if (detectedSymbols==-1) {
         return -1;
     }
     x=x+1;
-    int detectedProgramType=detect_program_type();
+    int detectedProgramType=detect_program_type(lclstack);
     if (detectedProgramType==-1) {
         return -1;
     }
     x=x+1;
-    int detectedCells=detect_cells();
+    int detectedCells=detect_cells(lclstack);
     if (detectedCells==-1) {
         return -1;
     }
     x=x+1;
-    int verifiedMainCell=verify_main_cell();
+    int verifiedMainCell=verify_main_cell(lclstack);
     if (verifiedMainCell==-1) {
         return -1;
     }
     final.push_back("args:");
     x=x+1;
-    int makedArgSection=make_args_section(replace);
+    int makedArgSection=make_args_section(replace,lclstack);
     if (makedArgSection==-1) {
         return -1;
     }
@@ -405,9 +422,10 @@ int main (int argc,char* argv[]) {
         string line=maincell.content[i];
         vodka::analyser::line actual_line;
         actual_line.content=line;
-        actual_line.checked=actual_line.check();
+        actual_line.line=maincell.start.line+(int)i+1;
+        actual_line.file=file;
+        actual_line.checked=actual_line.check(lclstack);
         if (actual_line.checked==false) {
-            error("vodka.error.analyser.syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
             return -1;
         }
         if (actual_line.skip==true) {
@@ -415,9 +433,8 @@ int main (int argc,char* argv[]) {
         }
         vodka::analyser::type_analyser type_analyser;
         type_analyser.line_analyse=actual_line;
-        type_analyser.checked=type_analyser.line_type_analyse();
+        type_analyser.checked=type_analyser.line_type_analyse(lclstack);
         if (type_analyser.checked==false) {
-            error("vodka.error.analyser.line_type : Can't identify the type of line.",file,{line},{maincell.start.line+(int)i+1});
             return -1;
         }
         //* Debug line processing
@@ -431,44 +448,39 @@ int main (int argc,char* argv[]) {
             log("Checking vodka declaration syntax.",verbose,x,last,2,{(int)i+1,1},{maincell.content.size(),6});
             vodka::analyser::var_dec_analyser var_dec_analyser;
             var_dec_analyser.line_analyse=type_analyser;
-            var_dec_analyser.checked=var_dec_analyser.var_dec_analyse();
+            var_dec_analyser.checked=var_dec_analyser.var_dec_analyse(lclstack);
             if (var_dec_analyser.checked==false) {
-                error("vodka.error.variables.invalid_syntax : Invalid syntax.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }
             if (var_dec_analyser.name.substr(0,1)=="$" || var_dec_analyser.name.substr(0,2)=="$$") {
                 for (auto a:variableslist) {
                     if (a==var_dec_analyser.name) {
-                        error("vodka.error.variables.constant : Can't modify a constant.",file,{line},{maincell.start.line+(int)i+1});
+                        raise(error_container("vodka.error.variables.constant : Can't modify a constant.",file,{line},{maincell.start.line+(int)i+1},lclstack));
                         return -1;
                     }
                 }
             }
             log("Checking vodka declaration type and value.",verbose,x,last,2,{(int)i+1,2},{maincell.content.size(),6});
-            var_dec_analyser.checked_type_value=var_dec_analyser.check_type_value(variableslist);
+            var_dec_analyser.checked_type_value=var_dec_analyser.check_type_value(variableslist,lclstack);
             if (var_dec_analyser.checked_type_value==false) {
-                error("vodka.error.variables.invalid_declaration : Invalid declaration, this could be the the value or datatype that is incorrect or the variable to duplicate that doesn't exist.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }
             log("Making metadata about vodka declaration.",verbose,x,last,2,{(int)i+1,3},{maincell.content.size(),6});
             if (var_dec_analyser.datatype=="vodka") {
                 var_dec_analyser.source_duplication=variablesdict[var_dec_analyser.value];
             }
-            bool info=var_dec_analyser.make_info();
+            bool info=var_dec_analyser.make_info(lclstack);
             if (info==false) {
-                error("vodka.error.variables.metadata : Can't make metadata about vodka declaration.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }
             log("Pre-treating vodka declaration value.",verbose,x,last,2,{(int)i+1,4},{maincell.content.size(),6});
-            var_dec_analyser.pre_treated=var_dec_analyser.pre_treatement();
+            var_dec_analyser.pre_treated=var_dec_analyser.pre_treatement(lclstack);
             if (var_dec_analyser.pre_treated==false) {
-                error("vodka.error.variables.pre_treatement : Can't pre-treat vodka declaration value.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }
             log("Compiling vodka declaration into variable container.",verbose,x,last,2,{(int)i+1,5},{maincell.content.size(),6});
-            bool output=var_dec_analyser.output();
+            bool output=var_dec_analyser.output(lclstack);
             if (output==false) {
-                error("vodka.error.variables.compile : Can't output vodka declaration.",file,{line},{maincell.start.line+(int)i+1});
                 return -1;
             }
             log("Registering vodka declaration.",verbose,x,last,2,{(int)i+1,6},{maincell.content.size(),6});
@@ -492,11 +504,11 @@ int main (int argc,char* argv[]) {
                 fcall.type_analyser=type_analyser;
                 vodka::library::kernel::traitement engine;
                 engine.call=fcall;
-                engine.checked=engine.kernel_traitement();
+                engine.checked=engine.kernel_traitement(lclstack);
                 if (engine.checked==false) {
                     return -1;
                 } else {
-                    instructions.push_back(engine.syscall_output);
+                    instructions.insert(instructions.end(),engine.syscall_output.begin(),engine.syscall_output.end());
                 }
                 if (engine.var_flag==true) {
                     variablesdict=engine.call.variablesdict_context;
@@ -516,7 +528,7 @@ int main (int argc,char* argv[]) {
             icall.type_analyser=type_analyser;
             vodka::instructions::instruction_traitement engine;
             engine.call=icall;
-            engine.checked=engine.traitement();
+            engine.checked=engine.traitement(lclstack);
             if (engine.checked==false) {
                 return -1;
             } else {
@@ -529,7 +541,7 @@ int main (int argc,char* argv[]) {
                 variableslist=engine.call.variableslist_context;
             }
         } else {
-            error("vodka.error.function.unknow : Unknow function.",file,{line},{maincell.start.line+(int)i+1});
+            raise(error_container("vodka.error.function.unknow : Unknow function.",file,{line},{maincell.start.line+(int)i+1},lclstack));
             return -1;
         }
     }
@@ -596,7 +608,7 @@ int main (int argc,char* argv[]) {
         stringstream ss;
         bool endargs=false;
         ss<<put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
-        json_ints["metadata"]={{"type","metadata"},{"vodka_version","0.3 beta 1"},{"json_version","3"},{"source_file",file},{"timestamp",ss.str()},{"json_type","kernel"}};
+        json_ints["metadata"]={{"type","metadata"},{"vodka_version","0.3 beta 2"},{"json_version","3"},{"source_file",file},{"timestamp",ss.str()},{"json_type","kernel"}};
         vector<string> kernel_symbol={"code:","endcode","args:","endargs","data:","enddata"};
         for (const string& line:final) {
             log("Converting line "+to_string(a)+".",verbose,x,last,1,{a},{final.size()});
@@ -644,7 +656,7 @@ int main (int argc,char* argv[]) {
         tm utc=*std::gmtime(&now_c);
         stringstream ss;
         ss<<put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
-        json_ints_v["metadata"]={{"metadata",{{"type","metadata"},{"vodka_version","0.3 beta 1"},{"json_version","3"},{"source_file",file},{"timestamp",ss.str()},{"json_type","vodka"}}}};
+        json_ints_v["metadata"]={{"metadata",{{"type","metadata"},{"vodka_version","0.3 beta 2"},{"json_version","3"},{"source_file",file},{"timestamp",ss.str()},{"json_type","vodka"}}}};
         log("Converting symbols : ",verbose,x,last,1,{1},{2});
         json_ints_v["symbols"]={};
         bool cellstart=false;
