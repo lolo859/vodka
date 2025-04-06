@@ -12,16 +12,16 @@
 using namespace std;
 //* Vodka standard utilities
 namespace vodka {
-    const string version="0.3 beta 2";
+    const string version="0.3 beta 3";
     const string json_version="3";
     //* Every library that has a reserved name inside the transcoder
     const vector<string> internal_library={"kernel"};
     //* Every functions for every internal library
-    const map<string,vector<string>> internal_library_functions={{"kernel",{"print","add","assign","free","invert","back","duplicate","abs","divmod","toint","todec"}}};
+    const map<string,vector<string>> internal_library_functions={{"kernel",{"print","add","assign","free","invert","back","duplicate","abs","divmod","toint","todec","divide"}}};
     //* Every internal type
     const vector<string> internal_type={"vodint","vodec","vodarg","vodka"};
     //* Every syscall
-    const vector<string> internal_syscall={"PRINT","ADD","ASSIGN","FREE","INVERT","BACK","DUPLICATE","ABS","DIVMOD","TOINT","TODEC"};
+    const vector<string> internal_syscall={"PRINT","ADD","ASSIGN","FREE","INVERT","DUPLICATE","ABS","DIVMOD","TOINT","TODEC","MULINT","MULDEC","DIVIDE"};
     //* Every vodka codebase instructions
     const vector<string> vodka_instruction={"multiply"};
     //* Every conversions possible using syscalls
@@ -113,17 +113,6 @@ namespace vodka {
                 info.support_multiple_argument=false;
             }
         };
-        class BACK {
-            public:
-                string var_uid;
-                string const_uid;
-                string back_uid;
-                syscall info;
-            BACK() {
-                info.name="BACK";
-                info.support_multiple_argument=true;
-            }
-        };
         class DUPLICATE {
             public:
                 string source_uid;
@@ -175,6 +164,41 @@ namespace vodka {
                 info.support_multiple_argument=true;
             }
         };
+        class MULDEC {
+            public:
+                string output_uid;
+                string first_uid;
+                string second_uid;
+                string precision_uid;
+                syscall info;
+            MULDEC() {
+                info.name="MULDEC";
+                info.support_multiple_argument=true;
+            }
+        };
+        class MULINT {
+            public:
+                string output_uid;
+                string first_uid;
+                string second_uid;
+                syscall info;
+            MULINT() {
+                info.name="MULINT";
+                info.support_multiple_argument=true;
+            }
+        };
+        class DIVIDE {
+            public:
+                string output_uid;
+                string first_uid;
+                string second_uid;
+                string precision_uid;
+                syscall info;
+            DIVIDE() {
+                info.name="DIVIDE";
+                info.support_multiple_argument=true;
+            }
+        };
         //* For registering a syscall, it need to be encapsuled into a syscall_container object
         class syscall_container {
             public:
@@ -185,12 +209,14 @@ namespace vodka {
                 ASSIGN assignele;
                 FREE freeele;
                 INVERT invertele;
-                BACK backele;
                 DUPLICATE duplicateele;
                 ABS absele;
                 DIVMOD divmodele;
                 TOINT tointele;
                 TODEC todecele;
+                MULINT mulintele;
+                MULDEC muldecele;
+                DIVIDE divideele;
             //* Function for getting the syntax of the syscall
             string syntax();
         };
@@ -254,6 +280,8 @@ namespace vodka {
     //* Vodka analyser
     namespace analyser {
         using namespace vodka::errors;
+        //* Return the list of variables passed in argument
+        vector<string> get_arguments(string line);
         //* Base class to check if a line is conform to vodka syntax
         class line {
             public:
@@ -411,6 +439,7 @@ namespace vodka {
         //* Logs functions
         void log(const string& text,string verbose,int x,string last,int sublevel=0,vector<int> substep={},vector<unsigned long> subtotal={});
         void debuglog(const string& text,int line,const string& cell,bool debugmode,string verbose,string file,bool debug_info=true);
+        void var_warning(string namevar,string typevar,string namecell,string line,bool var_warning_enabled,string verbose);
     }
     //* Internal library
     namespace library {
@@ -426,12 +455,12 @@ namespace vodka {
                 int main_logstep_context;
                 string last_logstep_context;
                 map<string,vodka::variables::element> variablesdict_context;
-                bool conversions_checked;
-                string conversion_error_code;
         };
         //* Kernel internal library
         namespace kernel {
             using namespace vodka::errors;
+            //* Every datatypes supported by each function of kernel internal library
+            const map<string,vector<string>> supported_type={{"add",{"vodint","vodec"}}};
             //* Main class for parsing line that call kernel internal library
             class traitement {
                 public:
@@ -452,12 +481,15 @@ namespace vodka {
                     bool divmod_int(sources_stack lclstack={});
                     bool toint_int(sources_stack lclstack={});
                     bool todec_int(sources_stack lclstack={});
+                    bool divide_int(sources_stack lclstack={});
             };
         }
     }
     //* Internal instructions
     namespace instructions {
         using namespace vodka::errors;
+        //* Every datatype supported by each vodka codebase instructions
+        const map<string,vector<string>> supported_type={{"multiply",{"vodint","vodec"}}};
         //* Class for a line that call a vodka instruction
         class instruction_call {
             public:

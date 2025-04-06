@@ -11,6 +11,7 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <nlohmann/json.hpp>
 #include <cctype>
+#include <getopt.h>
 #include <cstring>
 #include <chrono>
 #include "vodka-lib/vodka-lib.h"
@@ -42,27 +43,25 @@ void replaceall(std::string &str,const std::string &from,const std::string &to) 
 using namespace std;
 using namespace vodka::utilities;
 using namespace vodka::errors;
-string error_source="vodka-transcoder";
+//* Variables for compilation and options
 string verbose="e";
 bool debugmode=false;
+bool var_warning_enabled=true;
 int x=1;
 string last;
-string sublast;
 string file;
 sources_stack srcstack;
-//* Some vectors and maps
-vector<string> mainargslist;
-map<string,vodka::variables::element> mainargsdict;
-vector<vodka::syscalls::syscall_container> instructions;
-map<string,vodka::variables::element> variablesdict;
-map<string,string> replacement;
-vector<string> variableslist;
-vector<string> symbollist={"VODSTART","VODEND","VODIMPORT","VODTYPE","VODSTRUCT","VODCLASS","VODENDCLASS","VODEFINE"};
-vector<string> typelist={"app","command","shell","gui","logonui","logonshell","service"};
 vector<string> final;
 map<string,map<string,string>> json_ints;
 map<string,map<string,map<string,string>>> json_ints_v;
-//* File vector
+//* Vectors and maps for code and code structure analysis
+vector<string> mainargslist;
+map<string,vodka::variables::element> mainargsdict;
+map<string,vodka::variables::element> variablesdict;
+vector<string> variableslist;
+map<string,string> replacement;
+vector<string> symbollist={"VODSTART","VODEND","VODIMPORT","VODTYPE","VODSTRUCT","VODCLASS","VODENDCLASS","VODEFINE"};
+vector<string> typelist={"app","command","shell","gui","logonui","logonshell","service"};
 vector<string> content;
 vector<symbol> symbols;
 symbol temp;
@@ -342,11 +341,31 @@ int main (int argc,char* argv[]) {
     string mode="compile";
     string finde;
     opterr=0;
+    struct option options[] = {
+        {"help",no_argument,nullptr,'h'},
+        {"find",required_argument,nullptr,'f'},
+        {"source-file",required_argument,nullptr,'s'},
+        {"output-file",required_argument,nullptr,'o'},
+        {"verbose-reduced",no_argument,nullptr,'v'},
+        {"verbose-full",no_argument,nullptr,'V'},
+        {"debug-lines",no_argument,nullptr,'d'},
+        {"json-kernel",no_argument,nullptr,'j'},
+        {"json-vodka",no_argument,nullptr,'J'},
+        {"disable-replacements",no_argument,nullptr,'r'},
+        {"disable-all-warnings",no_argument,nullptr,'w'},
+        {"disable-variables-warnings",no_argument,nullptr,0},
+        {nullptr, 0, nullptr, 0}
+    };
     //* Args management
-    while ((option=getopt(argc,argv,"hjJrdvVf:s:o:"))!=-1) {
+    while ((option=getopt_long(argc,argv,"hjJrdvVwf:s:o:",options,nullptr))!=-1) {
         switch (option) {
+        case 0:
+            if (string(argv[optind-1])=="disable-variables-warnings") {
+                var_warning_enabled=false;
+            }
+            break;
         case 'h':
-            cout<<"Vodka v0.3 beta 1 - Vodka Objective Dictionary for Kernel Analyser\nOptions :\n  -h : show this help\n  -f object_to_find : (not working for the moment)\n  -s source_file : source file \n  -o output_file : output file\n  -v : set verbose mode to reduced\n  -V : set verbose mode to all\n  -d : enable debug mode\n  -j : export output to a json file specified with -o\n  -J : export .vod structure to a json file specified with -o\n  -r : disable define replacement"<<endl;
+            cout<<"Vodka v0.3 beta 3 - Vodka Objective Dictionary for Kernel Analyser\nOptions :\n  -h, --help :\n    show this help\n  -f, --find object_to_find :\n    (not working for the moment)\n  -s, --source-file source_file :\n    source file \n  -o, --output-file output_file :\n    output file\n  -v, --verbose-reduced :\n    set verbose mode to reduced\n  -V, --verbose-full :\n    set verbose mode to full\n  -d, --debug-lines :\n    enable debug mode\n  -j, --json-kernel :\n    export output to a json file specified with -o\n  -J, --json-vodka :\n    export .vod structure to a json file specified with -o\n  -r, --disable-replacements :\n    disable define replacement\n  -w, --disable-all-warnings :\n    disable warnings\n  --disable-variables-warnings :\n    disable variables warnings"<<endl;
             return 0;
         case 'f':
             mode="find";
@@ -375,6 +394,9 @@ int main (int argc,char* argv[]) {
             break;
         case 'r':
             replace=false;
+            break;
+        case 'w':
+            var_warning_enabled=false;
             break;
         case '?':
             cout<<"Invalid argument."<<endl;
@@ -417,6 +439,10 @@ int main (int argc,char* argv[]) {
     log("Started analysing main cell :",verbose,x,last);
     //* Here happen all the magic
     final.push_back("endargs");
+    vector<vodka::syscalls::syscall_container> instructions_main;
+    map<string,vodka::variables::element> main_variablesdict=variablesdict;
+    vector<string> main_variableslist=variableslist;
+    map<string,vector<string>> main_vars_used;
     for (size_t i=0;i<maincell.content.size();++i) {
         log("Analysing line "+to_string(i+1)+" :",verbose,x,last,1,{(int)i+1},{maincell.content.size()});
         string line=maincell.content[i];
@@ -453,7 +479,7 @@ int main (int argc,char* argv[]) {
                 return -1;
             }
             if (var_dec_analyser.name.substr(0,1)=="$" || var_dec_analyser.name.substr(0,2)=="$$") {
-                for (auto a:variableslist) {
+                for (auto a:main_variableslist) {
                     if (a==var_dec_analyser.name) {
                         raise(error_container("vodka.error.variables.constant : Can't modify a constant.",file,{line},{maincell.start.line+(int)i+1},lclstack));
                         return -1;
@@ -461,13 +487,13 @@ int main (int argc,char* argv[]) {
                 }
             }
             log("Checking vodka declaration type and value.",verbose,x,last,2,{(int)i+1,2},{maincell.content.size(),6});
-            var_dec_analyser.checked_type_value=var_dec_analyser.check_type_value(variableslist,lclstack);
+            var_dec_analyser.checked_type_value=var_dec_analyser.check_type_value(main_variableslist,lclstack);
             if (var_dec_analyser.checked_type_value==false) {
                 return -1;
             }
             log("Making metadata about vodka declaration.",verbose,x,last,2,{(int)i+1,3},{maincell.content.size(),6});
             if (var_dec_analyser.datatype=="vodka") {
-                var_dec_analyser.source_duplication=variablesdict[var_dec_analyser.value];
+                var_dec_analyser.source_duplication=main_variablesdict[var_dec_analyser.value];
             }
             bool info=var_dec_analyser.make_info(lclstack);
             if (info==false) {
@@ -484,23 +510,36 @@ int main (int argc,char* argv[]) {
                 return -1;
             }
             log("Registering vodka declaration.",verbose,x,last,2,{(int)i+1,6},{maincell.content.size(),6});
-            variablesdict[var_dec_analyser.name]=var_dec_analyser.var_object;
-            variableslist.push_back(var_dec_analyser.name);
+            main_variablesdict[var_dec_analyser.name]=var_dec_analyser.var_object;
+            main_variableslist.push_back(var_dec_analyser.name);
             if (!var_dec_analyser.is_kernel_const) {
-                instructions.push_back(var_dec_analyser.vodka_object);
+                instructions_main.push_back(var_dec_analyser.vodka_object);
+                main_vars_used[var_dec_analyser.name]={"f",to_string(actual_line.line)};
+            }
+            if (var_dec_analyser.is_kernel_const) {
+                variablesdict[var_dec_analyser.name]=var_dec_analyser.var_object;
+                variableslist.push_back(var_dec_analyser.name);   
             }
         //* Kernel function analysis
         } else if (type_analyser.type=="internal_library") {
+            auto args=vodka::analyser::get_arguments(line);
+            for (auto arg:args) {
+                try {
+                    main_vars_used.at(arg)={"t",main_vars_used.at(arg)[1]};
+                } catch (const std::out_of_range& e) {
+                    //* Error is raised later
+                }
+            }
             if (type_analyser.library_name=="kernel") {
                 vodka::library::function_call fcall;
                 fcall.verbose_context=verbose;
                 fcall.main_logstep_context=x;
                 fcall.last_logstep_context=last;
-                fcall.variableslist_context=variableslist;
+                fcall.variableslist_context=main_variableslist;
                 fcall.cell_context=maincell;
                 fcall.iteration_number_context=i;
                 fcall.file_name_context=file;
-                fcall.variablesdict_context=variablesdict;
+                fcall.variablesdict_context=main_variablesdict;
                 fcall.type_analyser=type_analyser;
                 vodka::library::kernel::traitement engine;
                 engine.call=fcall;
@@ -508,23 +547,31 @@ int main (int argc,char* argv[]) {
                 if (engine.checked==false) {
                     return -1;
                 } else {
-                    instructions.insert(instructions.end(),engine.syscall_output.begin(),engine.syscall_output.end());
+                    instructions_main.insert(instructions_main.end(),engine.syscall_output.begin(),engine.syscall_output.end());
                 }
                 if (engine.var_flag==true) {
-                    variablesdict=engine.call.variablesdict_context;
-                    variableslist=engine.call.variableslist_context;
+                    main_variableslist=engine.call.variableslist_context;
+                    main_variablesdict=engine.call.variablesdict_context;
                 }
             }
         } else if (type_analyser.type=="vodka_instruction") {
+            auto args=vodka::analyser::get_arguments(line);
+            for (auto arg:args) {
+                try {
+                    main_vars_used.at(arg)={"t",main_vars_used.at(arg)[1]};
+                } catch (const std::out_of_range& e) {
+                    //* Error is raised later
+                }
+            }
             vodka::instructions::instruction_call icall;
             icall.verbose_context=verbose;
             icall.main_logstep_context=x;
             icall.last_logstep_context=last;
-            icall.variableslist_context=variableslist;
+            icall.variableslist_context=main_variableslist;
             icall.cell_context=maincell;
             icall.iteration_number_context=i;
             icall.file_name_context=file;
-            icall.variablesdict_context=variablesdict;
+            icall.variablesdict_context=main_variablesdict;
             icall.type_analyser=type_analyser;
             vodka::instructions::instruction_traitement engine;
             engine.call=icall;
@@ -533,16 +580,22 @@ int main (int argc,char* argv[]) {
                 return -1;
             } else {
                 for (auto a:engine.syscalls_output) {
-                    instructions.push_back(a);
+                    instructions_main.push_back(a);
                 }
             }
             if (engine.var_flag==true) {
-                variablesdict=engine.call.variablesdict_context;
-                variableslist=engine.call.variableslist_context;
+                main_variablesdict=engine.call.variablesdict_context;
+                main_variableslist=engine.call.variableslist_context;
             }
         } else {
             raise(error_container("vodka.error.function.unknow : Unknow function.",file,{line},{maincell.start.line+(int)i+1},lclstack));
             return -1;
+        }
+    }
+    //* Indicating unused variables
+    for (auto var:main_vars_used) {
+        if (var.second[0]=="f") {
+            vodka::utilities::var_warning(var.first,main_variablesdict[var.first].thing,"main",var.second[1],var_warning_enabled,verbose);
         }
     }
     //* Writing output file
@@ -571,15 +624,15 @@ int main (int argc,char* argv[]) {
     }
     final.push_back("enddata");
     x=x+1;
-    log("Writing code section :",verbose,x,last);
+    log("Writing main code section :",verbose,x,last);
     a=1;
-    final.push_back("code:");
-    for (auto i:instructions) {
-        log("Writing "+i.thing+" instruction.",verbose,x,last,1,{a},{instructions.size()});
+    final.push_back("main:");
+    for (auto i:instructions_main) {
+        log("Writing "+i.thing+" instruction.",verbose,x,last,1,{a},{instructions_main.size()});
         final.push_back(i.syntax());
         a=a+1;
     }
-    final.push_back("endcode");
+    final.push_back("endmain");
     x=x+1;
     log("Opening output file.",verbose,x,last);
     ofstream outputfile(output);
@@ -608,7 +661,7 @@ int main (int argc,char* argv[]) {
         stringstream ss;
         bool endargs=false;
         ss<<put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
-        json_ints["metadata"]={{"type","metadata"},{"vodka_version","0.3 beta 2"},{"json_version","3"},{"source_file",file},{"timestamp",ss.str()},{"json_type","kernel"}};
+        json_ints["metadata"]={{"type","metadata"},{"vodka_version","0.3 beta 3"},{"json_version","3"},{"source_file",file},{"timestamp",ss.str()},{"json_type","kernel"}};
         vector<string> kernel_symbol={"code:","endcode","args:","endargs","data:","enddata"};
         for (const string& line:final) {
             log("Converting line "+to_string(a)+".",verbose,x,last,1,{a},{final.size()});
@@ -656,7 +709,7 @@ int main (int argc,char* argv[]) {
         tm utc=*std::gmtime(&now_c);
         stringstream ss;
         ss<<put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
-        json_ints_v["metadata"]={{"metadata",{{"type","metadata"},{"vodka_version","0.3 beta 2"},{"json_version","3"},{"source_file",file},{"timestamp",ss.str()},{"json_type","vodka"}}}};
+        json_ints_v["metadata"]={{"metadata",{{"type","metadata"},{"vodka_version","0.3 beta 3"},{"json_version","3"},{"source_file",file},{"timestamp",ss.str()},{"json_type","vodka"}}}};
         log("Converting symbols : ",verbose,x,last,1,{1},{2});
         json_ints_v["symbols"]={};
         bool cellstart=false;

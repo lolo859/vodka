@@ -37,6 +37,11 @@ namespace inside_analyser {
     }
 }
 using namespace inside_analyser;
+//* Return the list of variables passed in argument
+vector<string> vodka::analyser::get_arguments(string line) {
+    auto eles=split(line," ");
+    return vector<string>(eles.begin()+1,eles.end());
+}
 //* Checking if the line is conform to vodka syntax (doesn't check the line argument)
 bool vodka::analyser::line::check(sources_stack lclstack) {
     auto srclclstack=lclstack;

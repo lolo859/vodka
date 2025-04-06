@@ -66,6 +66,9 @@ string vodka::type::vodint::remove_zero(const string& value,sources_stack lclsta
     string out;
     bool negative;
     string newvalue;
+    if (value=="0" or value=="-0") {
+        return "0";
+    }
     if (value.substr(0,1)=="-") {
         negative=true;
         newvalue=value.substr(1,value.length()-1);
@@ -73,23 +76,14 @@ string vodka::type::vodint::remove_zero(const string& value,sources_stack lclsta
         negative=false;
         newvalue=value;
     }
-    if (newvalue!="0") {
-        if (count(newvalue.begin(),newvalue.end(),'0')!=newvalue.length()) {
-            for (int i=0;i<newvalue.length();++i) {
-                if (newvalue[i]=='0' && reached==false) {
-                    reached=false;
-                } else if (newvalue[i]!='0' && reached==false) {
-                    reached=true;
-                    out=out+newvalue[i];
-                } else {
-                    out=out+newvalue[i];
-                }
-            }
-        } else {
-            out="0";
+    if (newvalue.substr(0,1)=="0") {
+        size_t pos=0;
+        while (pos<newvalue.length() && newvalue[pos]==newvalue[0]) {
+            ++pos;
         }
+        out=newvalue.substr(pos);
     } else {
-        out="0";
+        out=newvalue;
     }
     if (negative==true) {
         out="-"+out;
@@ -170,7 +164,6 @@ bool vodka::type::vodec::check_value(const string& value,vodka::analyser::line c
 string vodka::type::vodec::remove_zero(const string& value,sources_stack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    bool reached=false;
     string out;
     bool negative;
     string newvalue;
@@ -181,27 +174,20 @@ string vodka::type::vodec::remove_zero(const string& value,sources_stack lclstac
         negative=true;
         newvalue=value.substr(1,value.length()-1);
     } else {
-        negative=false;
         newvalue=value;
     }
-    if (newvalue!="0") {
-        if (count(newvalue.begin(),newvalue.end(),'0')!=newvalue.length()) {
-            for (int i=0;i<newvalue.length();++i) {
-                if (newvalue[i]=='0' && reached==false) {
-                    reached=false;
-                } else if (newvalue[i]!='0' && reached==false) {
-                    reached=true;
-                    out=out+newvalue[i];
-                } else {
-                    out=out+newvalue[i];
-                }
-            }
-        } else {
-            out="0";
-        }
+    auto twopart=split(newvalue,".");
+    string newintpart=vodka::type::vodint::remove_zero(twopart[0],srclclstack);
+    auto decpart=twopart[1];
+    string newdecpart;
+    if (decpart!="") {
+        reverse(decpart.begin(),decpart.end());
+        newdecpart=vodka::type::vodint::remove_zero(decpart,srclclstack);
+        reverse(newdecpart.begin(),newdecpart.end());
     } else {
-        out="0";
+        newdecpart="0";
     }
+    out=newintpart+"."+newdecpart;
     if (negative==true) {
         out="-"+out;
     }

@@ -65,30 +65,30 @@ void vodka::errors::raise(error_container element) {
             auto sourcenamepath=split(sourcename,"::");
             auto functionname=sourcenamepath[sourcenamepath.size()-1];
             if (i!=0) {
-                cout<<"["+to_string(i+1)+"] Called function "<<termcolor::magenta<<termcolor::bold<<functionname<<termcolor::reset<<", located in :"<<endl;
+                cout<<"[ERROR]   "<<"["+to_string(i+1)+"] Called function "<<termcolor::magenta<<termcolor::bold<<functionname<<termcolor::reset<<", located in :"<<endl;
             } else {
-                cout<<endl<<"[1] Function "<<termcolor::magenta<<termcolor::bold<<functionname<<termcolor::reset<<", located in :"<<endl;
+                cout<<endl<<"[ERROR]   "<<"[1] Function "<<termcolor::magenta<<termcolor::bold<<functionname<<termcolor::reset<<", located in :"<<endl;
             }
             for (int y=0;y<path.size();++y) {
                 if (y==path.size()-1) {
-                    cout<<" ├─ "<<termcolor::cyan<<termcolor::bold<<path[y]<<termcolor::reset<<" (file)"<<endl;
+                    cout<<"[ERROR]   "<<" ├─ "<<termcolor::cyan<<termcolor::bold<<path[y]<<termcolor::reset<<" (file)"<<endl;
                 } else {
-                    cout<<" ├─ "<<termcolor::blue<<termcolor::bold<<path[y]<<termcolor::reset<<" (directory)"<<endl;
+                    cout<<"[ERROR]   "<<" ├─ "<<termcolor::blue<<termcolor::bold<<path[y]<<termcolor::reset<<" (directory)"<<endl;
                 }
             }
             for (int y=0;y<sourcenamepath.size();++y) {
                 if (sourcenamepath[y]==functionname) {
-                    cout<<" └─ "<<termcolor::magenta<<termcolor::bold<<sourcenamepath[y]<<termcolor::reset<<" (function)"<<endl;
+                    cout<<"[ERROR]   "<<" └─ "<<termcolor::magenta<<termcolor::bold<<sourcenamepath[y]<<termcolor::reset<<" (function)"<<endl;
                 } else {
                     if (y==sourcenamepath.size()-2) {
-                        cout<<" ├─ "<<termcolor::yellow<<termcolor::bold<<sourcenamepath[y]<<termcolor::reset<<" (class/final namespace)"<<endl;
+                        cout<<"[ERROR]   "<<" ├─ "<<termcolor::yellow<<termcolor::bold<<sourcenamepath[y]<<termcolor::reset<<" (class/final namespace)"<<endl;
                     } else {
-                        cout<<" ├─ "<<termcolor::green<<termcolor::bold<<sourcenamepath[y]<<termcolor::reset<<" (namespace)"<<endl;
+                        cout<<"[ERROR]   "<<" ├─ "<<termcolor::green<<termcolor::bold<<sourcenamepath[y]<<termcolor::reset<<" (namespace)"<<endl;
                     }
                 }
             }
         }
-        cout<<endl<<"Raised the following exception :"<<endl;
+        cout<<endl<<"[ERROR]   "<<"Raised the following exception :"<<endl;
     }
     if (lines.size()!=0) {
         if (lines.size()>1) {
@@ -104,12 +104,12 @@ void vodka::errors::raise(error_container element) {
         }
     }
     if (file!="") {
-        cout<<"\nFile "<<termcolor::cyan<<termcolor::bold<<file<<termcolor::reset<<":"+to_string(lines[0])+", line(s) "+linestr+" an error occured :"<<endl;
+        cout<<endl<<"[ERROR]   "<<"File "<<termcolor::cyan<<termcolor::bold<<file<<termcolor::reset<<":"+to_string(lines[0])+", line(s) "+linestr+" an error occured :"<<endl;
     }
     if (lines_content.size()!=0 && lines_content.size()!=0) {
         for (size_t y=0;y<lines.size();++y) {
-            cout<<"  "<<lines[y]<<" | "<<lines_content[y]<<endl;
+            cout<<"[ERROR]   "<<"  "<<lines[y]<<" | "<<lines_content[y]<<endl;
         }
     }
-    cout<<termcolor::red<<termcolor::bold<<error<<termcolor::reset<<endl;
+    cout<<"[ERROR]   "<<termcolor::red<<termcolor::bold<<error<<termcolor::reset<<endl;
 }

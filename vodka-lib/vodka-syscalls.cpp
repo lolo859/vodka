@@ -63,8 +63,6 @@ string vodka::syscalls::syscall_container::syntax() {
         return freeele.info.name+" "+args;
     } else if (thing=="INVERT") {
         return invertele.info.name+" "+invertele.uid;
-    } else if (thing=="BACK") {
-        return backele.info.name+" "+backele.var_uid+" "+backele.const_uid+" "+backele.back_uid;
     } else if (thing=="DUPLICATE") {
         return duplicateele.info.name+" "+duplicateele.output_uid+" "+duplicateele.source_uid;
     } else if (thing=="ABS") {
@@ -75,6 +73,12 @@ string vodka::syscalls::syscall_container::syntax() {
         return tointele.info.name+" "+tointele.uid_output+" "+tointele.uid_source;
     } else if (thing=="TODEC") {
         return todecele.info.name+" "+todecele.uid_output+" "+todecele.uid_source;
+    } else if (thing=="MULINT") {
+        return mulintele.info.name+" "+mulintele.output_uid+" "+mulintele.first_uid+" "+mulintele.second_uid;
+    } else if (thing=="MULDEC") {
+        return muldecele.info.name+" "+muldecele.output_uid+" "+muldecele.first_uid+" "+muldecele.second_uid+" "+muldecele.precision_uid;
+    } else if (thing=="DIVIDE") {
+        return divideele.info.name+" "+divideele.output_uid+" "+divideele.first_uid+" "+divideele.second_uid+" "+divideele.precision_uid;
     } else {
         return "error";
     }
