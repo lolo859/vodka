@@ -78,7 +78,7 @@ bool vodka::analyser::type_analyser::line_type_analyse(sources_stack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
     if (line_analyse.checked==false) {
-        raise(error_container("vodka.error.analyser.chain_error : Previous traitement hasn't been well executed.",line_analyse.file,{line_analyse.content},{line_analyse.line},srclclstack));
+        raise(error_container("vodka.error.analyser.chain_error : Previous treatement hasn't been well executed.",line_analyse.file,{line_analyse.content},{line_analyse.line},srclclstack));
         return false;
     } else {
         if (line_analyse.content.substr(0,2)==">>") {
@@ -114,7 +114,7 @@ bool vodka::analyser::var_dec_analyser::var_dec_analyse(sources_stack lclstack) 
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
     if (line_analyse.checked==false || line_analyse.line_analyse.checked==false || line_analyse.type!="var") {
-        raise(error_container("vodka.error.analyser.chain_error : Previous traitement hasn't been well executed.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
+        raise(error_container("vodka.error.analyser.chain_error : Previous treatement hasn't been well executed.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
         return false;
     }
     if (line_analyse.line_analyse.content.substr(0,5)=="vodka") {
@@ -136,6 +136,10 @@ bool vodka::analyser::var_dec_analyser::var_dec_analyse(sources_stack lclstack) 
                 is_vodka_const=name.substr(0,1)=="$";
             } else {
                 raise(error_container("vodka.error.variables.invalid_syntax : Invalid syntax.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
+                return false;
+            }
+            if (name.substr(0,1)=="#" || name.substr(0,1)=="%") {
+                raise(error_container("vodka.error.variables.invalid_name : Can't create variable starting with # or %.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
                 return false;
             }
             if (valuepart.size()>=2) {
@@ -206,7 +210,7 @@ bool vodka::analyser::var_dec_analyser::check_type_value(vector<string> context,
             return false;
         }
     } else {
-        raise(error_container("vodka.error.analyser.chain_error : Previous traitement hasn't been well executed.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
+        raise(error_container("vodka.error.analyser.chain_error : Previous treatement hasn't been well executed.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
         return false;
     }
 }
@@ -239,6 +243,7 @@ bool vodka::analyser::var_dec_analyser::make_info(sources_stack lclstack) {
                     var.varname=name;
                     return true;
                 } else {
+                    raise(error_container("vodka.error.analyser.datatype_error : Can't duplicate this type : "+source_duplication.thing,line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
                     return false;
                 }
             } else {
@@ -247,7 +252,7 @@ bool vodka::analyser::var_dec_analyser::make_info(sources_stack lclstack) {
             }
         }
     } else {
-        raise(error_container("vodka.error.analyser.chain_error : Previous traitement hasn't been well executed.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
+        raise(error_container("vodka.error.analyser.chain_error : Previous treatement hasn't been well executed.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
         return false;
     }
 }
@@ -269,7 +274,7 @@ bool vodka::analyser::var_dec_analyser::pre_treatement(sources_stack lclstack) {
             return false;
         }
     } else {
-        raise(error_container("vodka.error.analyser.chain_error : Previous traitement hasn't been well executed.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
+        raise(error_container("vodka.error.analyser.chain_error : Previous treatement hasn't been well executed.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
         return false;
     }
 }
@@ -349,7 +354,7 @@ bool vodka::analyser::var_dec_analyser::output(sources_stack lclstack) {
             return false;
         }
     } else {
-        raise(error_container("vodka.error.analyser.chain_error : Previous traitement hasn't been well executed.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
+        raise(error_container("vodka.error.analyser.chain_error : Previous treatement hasn't been well executed.",line_analyse.line_analyse.file,{line_analyse.line_analyse.content},{line_analyse.line_analyse.line},srclclstack));
         return false;
     }
 }

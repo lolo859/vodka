@@ -57,13 +57,13 @@ void vodka::utilities::log(const string& text,string verbose,int x,string last,i
                 } else {
                     texti=text;
                 }
-                last="("+to_string(x)+"/18) "+texti;
+                last="("+to_string(x)+"/19) "+texti;
                 cout<<last;
             }
         } else {
             if (verbose=="a") {
                 cout<<endl<<"[LOG]     ";
-                last="("+to_string(x)+"/18) ";
+                last="("+to_string(x)+"/19) ";
                 for (int i=0;i<sublevel;++i) {
                     last=last+"("+to_string(substep[i])+"/"+to_string(subtotal[i])+") ";
                 }

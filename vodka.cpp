@@ -1,20 +1,20 @@
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <map>
 #include <vector>
 #include <string>
 #include <filesystem>
 #include <algorithm>
+#include <bitset>
 #include <unistd.h>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <nlohmann/json.hpp>
 #include <cctype>
 #include <getopt.h>
 #include <cstring>
 #include <chrono>
+#include <boost/hash2/sha3.hpp>
 #include "vodka-lib/vodka-lib.h"
+#include "dependencies/json.hpp"
 //* Some necessary functions
 std::vector<std::string> split(const std::string& str,const std::string& delimiter) {
     std::vector<std::string> tokens;
@@ -39,6 +39,40 @@ void replaceall(std::string &str,const std::string &from,const std::string &to) 
         start_pos+=to.length();
     }
 }
+string hash_then_encode(string origin) {
+    boost::hash2::sha3_512 hasher;
+    hasher.update(origin.data(),origin.size());
+    auto digest=hasher.result();
+    string out;
+    for (auto byte:digest) {
+        bitset<8> bits(static_cast<unsigned char>(byte));
+        auto str=bits.to_string();
+        for (auto a:str) {
+            if (a=='0') {
+                out=out+u8"\u200B";
+            } else {
+                out=out+u8"\u2063";
+            }
+        }
+    }
+    return out;
+}
+string encode_to_bin(string input) {
+    string binar;
+    for (unsigned char a:input) {
+        bitset<8> bits(a);
+        binar=binar+bits.to_string();
+    }
+    string out;
+    for (auto a:binar) {
+        if (a=='0') {
+            out=out+u8"\u200B";
+        } else {
+            out=out+u8"\u2063";
+        }
+    }
+    return hash_then_encode(out);
+}
 //* Some variables
 using namespace std;
 using namespace vodka::utilities;
@@ -47,6 +81,7 @@ using namespace vodka::errors;
 string verbose="e";
 bool debugmode=false;
 bool var_warning_enabled=true;
+bool disable_integrity_hash=false;
 int x=1;
 string last;
 string file;
@@ -63,6 +98,7 @@ map<string,string> replacement;
 vector<string> symbollist={"VODSTART","VODEND","VODIMPORT","VODTYPE","VODSTRUCT","VODCLASS","VODENDCLASS","VODEFINE"};
 vector<string> typelist={"app","command","shell","gui","logonui","logonshell","service"};
 vector<string> content;
+vector<string> output_file_to_check;
 vector<symbol> symbols;
 symbol temp;
 bool typefound=false;
@@ -75,39 +111,97 @@ int read_file(string output,string mode,sources_stack srclclstack) {
     auto lclstack=srclclstack;
     lclstack.add(__PRETTY_FUNCTION__,__FILE__);
     //* Source file fetching
-    if (output=="" && mode=="compile" && mode=="jsonvodka" && mode=="jsonkernel") {
+    if (output=="") {
         raise(error_container("vodka.error.file.output_not_provided","<no file>",{"<no line affected>"},{0},lclstack));
         return -1;
     }
-    log("Checking if source file exist.",verbose,x,last);
-    if (filesystem::exists(file)==false) {
-        raise(error_container("Source file doesn't exist.",file,{"<no line affected>"},{0},lclstack));
-        return -1;
-    }
-    x=x+1;
-    log("Checking file readability.",verbose,x,last);
-    ifstream filee(file.c_str());
-    if (filee.is_open()==false) {
-        raise(error_container("File can't be open.",file,{"<no line affected>"},{0},lclstack));
-        return -1;
-    }
-    x=x+1;
-    log("Reading file.",verbose,x,last);
-    string lineread;
-    while (getline(filee,lineread)) {
-        content.push_back(lineread);
-    }
-    x=x+1;
-    log("Removing comments.",verbose,x,last);
-    for (int i=0;i<content.size();++i) {
-        if (content[i].find("§",0)==0) {
-            content[i]="";
-        } else {
-            content[i]=split(content[i],"§")[0];
+    if (mode=="check") {
+        log("Checking if source and output file exist.",verbose,x,last);
+        if (filesystem::exists(file)==false) {
+            raise(error_container("Source file doesn't exist.",file,{"<no line affected>"},{0},lclstack));
+            return -1;
         }
+        if (filesystem::exists(output)==false) {
+            raise(error_container("Output file doesn't exist.",file,{"<no line affected>"},{0},lclstack));
+            return -1;
+        }
+        x=x+1;
+        log("Checking files readability.",verbose,x,last);
+        ifstream filee(file.c_str());
+        if (filee.is_open()==false) {
+            raise(error_container("File can't be open.",file,{"<no line affected>"},{0},lclstack));
+            return -1;
+        }
+        ifstream fileee(output.c_str());
+        if (fileee.is_open()==false) {
+            raise(error_container("File can't be open.",output,{"<no line affected>"},{0},lclstack));
+            return -1;
+        }
+        x=x+1;
+        log("Reading files.",verbose,x,last);
+        string lineread;
+        while (getline(filee,lineread)) {
+            content.push_back(lineread);
+        }
+        string linereade;
+        while (getline(fileee,linereade)) {
+            output_file_to_check.push_back(linereade);
+        }
+        x=x+1;
+        log("Removing comments.",verbose,x,last);
+        for (int i=0;i<content.size();++i) {
+            if (content[i]!="") {
+                if (content[i].find("§",0)==0) {
+                    content[i]="";
+                } else {
+                    content[i]=split(content[i],"§")[0];
+                }
+            }
+        }
+        for (int i=0;i<output_file_to_check.size();++i) {
+            if (output_file_to_check[i]!="") {
+                if (output_file_to_check[i].find("§",0)==0) {
+                    output_file_to_check[i]="";
+                } else {
+                    output_file_to_check[i]=split(output_file_to_check[i],"§")[0];
+                }
+            }
+        }
+        filee.close();
+        return 0;
+    } else {
+        log("Checking if source file exist.",verbose,x,last);
+        if (filesystem::exists(file)==false) {
+            raise(error_container("Source file doesn't exist.",file,{"<no line affected>"},{0},lclstack));
+            return -1;
+        }
+        x=x+1;
+        log("Checking file readability.",verbose,x,last);
+        ifstream filee(file.c_str());
+        if (filee.is_open()==false) {
+            raise(error_container("File can't be open.",file,{"<no line affected>"},{0},lclstack));
+            return -1;
+        }
+        x=x+1;
+        log("Reading file.",verbose,x,last);
+        string lineread;
+        while (getline(filee,lineread)) {
+            content.push_back(lineread);
+        }
+        x=x+1;
+        log("Removing comments.",verbose,x,last);
+        for (int i=0;i<content.size();++i) {
+            if (content[i]!="") {
+                if (content[i].find("§",0)==0) {
+                    content[i]="";
+                } else {
+                    content[i]=split(content[i],"§")[0];
+                }
+            }
+        }
+        filee.close();
+        return 0;
     }
-    filee.close();
-    return 0;
 }
 //* Detect symbols 
 int detect_symbol(sources_stack srclclstack) {
@@ -119,7 +213,6 @@ int detect_symbol(sources_stack srclclstack) {
         log("Detecting if line "+to_string(i+1)+" contain symbol :",verbose,x,last,1,{(int)i+1},{content.size()});
         if (line.rfind("£",0)==0) {
             log("Allocating memory.",verbose,x,last,2,{(int)i+1,1},{content.size(),3});
-            
             temp.line=i+1;
             temp.content=line;
             auto ele=split(line," ");
@@ -173,7 +266,7 @@ int detect_symbol(sources_stack srclclstack) {
     }
     return 0;
 }
-int detect_program_type(sources_stack srclclstack) {
+int detect_program_type(string output,sources_stack srclclstack) {
     auto lclstack=srclclstack;
     lclstack.add(__PRETTY_FUNCTION__,__FILE__);
     log("Detecting program type :",verbose,x,last);
@@ -197,7 +290,11 @@ int detect_program_type(sources_stack srclclstack) {
             log("The symbol isn't the type symbol.",verbose,x,last,2,{(int)i+1,1},{symbols.size(),1});
         }
     }
-    final.push_back("type "+program_type);
+    if (disable_integrity_hash) {
+        final.push_back(encode_to_bin(output)+"type "+program_type);
+    } else {
+        final.push_back("type "+program_type);
+    }
     return 0;
 }
 int detect_cells(sources_stack srclclstack) {
@@ -302,7 +399,7 @@ int verify_main_cell(sources_stack srclclstack) {
     }
     return 0;
 }
-int make_args_section(bool replace,sources_stack srclclstack) {
+int code_pre_treatement(bool replace,sources_stack srclclstack) {
     auto lclstack=srclclstack;
     lclstack.add(__PRETTY_FUNCTION__,__FILE__);
     log("Writing args section.",verbose,x,last);
@@ -327,7 +424,113 @@ int make_args_section(bool replace,sources_stack srclclstack) {
                 }
             }
         }
-    
+    }
+    x=x+1;
+    log("Started datatypes replacement process.",verbose,x,last);
+    vector<string> directs_data;
+    for (int i=0;i<maincell.content.size();++i) {
+        vodka::analyser::line localline;
+        localline.line=maincell.start.line+i+1;
+        localline.file=file;
+        localline.content=maincell.content[i];
+        auto direct_declared_data=split(maincell.content[i]," ");
+        if (direct_declared_data.size()>2) {
+            if (direct_declared_data[0]!="vodka") {
+                direct_declared_data.erase(direct_declared_data.begin(),direct_declared_data.begin()+1);
+                for (auto arg:direct_declared_data) {
+                    if (arg.substr(0,1)=="#" && find(directs_data.begin(),directs_data.end(),arg)==directs_data.end()) {
+                        if (vodka::type::vodint::check_value(arg.substr(1,arg.size()-1),localline,lclstack)) {
+                            vodka::variables::vodint intele;
+                            intele.varinfo.algo_dependant=false;
+                            intele.varinfo.consts=true;
+                            intele.varinfo.write=true;
+                            intele.varinfo.define=true;
+                            intele.varinfo.uuid=to_string(vodka::utilities::genuid());
+                            intele.value=vodka::type::vodint::remove_zero(arg.substr(1,arg.size()-1));
+                            vodka::variables::element contele;
+                            contele.intele=intele;
+                            contele.thing="vodint";
+                            variablesdict[arg]=contele;
+                            variableslist.push_back(arg);
+                            directs_data.push_back(arg);
+                        } else {
+                            return -1;
+                        }
+                    } else if (arg.substr(0,1)=="%" && find(directs_data.begin(),directs_data.end(),arg)==directs_data.end()) {
+                        if (vodka::type::vodec::check_value(arg.substr(1,arg.size()-1),localline,lclstack)) {
+                            vodka::variables::vodec decele;
+                            decele.varinfo.algo_dependant=false;
+                            decele.varinfo.consts=true;
+                            decele.varinfo.write=true;
+                            decele.varinfo.define=true;
+                            decele.varinfo.uuid=to_string(vodka::utilities::genuid());
+                            decele.value=vodka::type::vodec::remove_zero(arg.substr(1,arg.size()-1));
+                            vodka::variables::element contele;
+                            contele.decele=decele;
+                            contele.thing="vodec";
+                            variablesdict[arg]=contele;
+                            variableslist.push_back(arg);
+                            directs_data.push_back(arg);
+                        } else {
+                            return -1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for (auto cell:cells) {
+        for (int i=0;i<cell.content.size();++i) {
+            vodka::analyser::line localline;
+            localline.line=cell.start.line+i+1;
+            localline.file=file;
+            localline.content=cell.content[i];
+            auto direct_declared_data=split(cell.content[i]," ");
+            if (direct_declared_data.size()>2) {
+                if (direct_declared_data[0]!="vodka") {
+                    direct_declared_data.erase(direct_declared_data.begin(),direct_declared_data.begin()+1);
+                    for (auto arg:direct_declared_data) {
+                        if (arg.substr(0,1)=="#" && find(directs_data.begin(),directs_data.end(),arg)==directs_data.end()) {
+                            if (vodka::type::vodint::check_value(arg.substr(1,arg.size()-1),localline,lclstack)) {
+                                vodka::variables::vodint intele;
+                                intele.varinfo.algo_dependant=false;
+                                intele.varinfo.consts=true;
+                                intele.varinfo.write=true;
+                                intele.varinfo.define=true;
+                                intele.varinfo.uuid=to_string(vodka::utilities::genuid());
+                                intele.value=vodka::type::vodint::remove_zero(arg.substr(1,arg.size()-1));
+                                vodka::variables::element contele;
+                                contele.intele=intele;
+                                contele.thing="vodint";
+                                variablesdict[arg]=contele;
+                                variableslist.push_back(arg);
+                                directs_data.push_back(arg);
+                            } else {
+                                return -1;
+                            }
+                        } else if (arg.substr(0,1)=="%" && find(directs_data.begin(),directs_data.end(),arg)==directs_data.end()) {
+                            if (vodka::type::vodec::check_value(arg.substr(1,arg.size()-1),localline,lclstack)) {
+                                vodka::variables::vodec decele;
+                                decele.varinfo.algo_dependant=false;
+                                decele.varinfo.consts=true;
+                                decele.varinfo.write=true;
+                                decele.varinfo.define=true;
+                                decele.varinfo.uuid=to_string(vodka::utilities::genuid());
+                                decele.value=vodka::type::vodec::remove_zero(arg.substr(1,arg.size()-1));
+                                vodka::variables::element contele;
+                                contele.decele=decele;
+                                contele.thing="vodec";
+                                variablesdict[arg]=contele;
+                                variableslist.push_back(arg);
+                                directs_data.push_back(arg);
+                            } else {
+                                return -1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
     return 0;
 }
@@ -354,10 +557,12 @@ int main (int argc,char* argv[]) {
         {"disable-replacements",no_argument,nullptr,'r'},
         {"disable-all-warnings",no_argument,nullptr,'w'},
         {"disable-variables-warnings",no_argument,nullptr,0},
+        {"disable-integrity-hash",no_argument,nullptr,'H'},
+        {"check-mode",no_argument,nullptr,'c'},
         {nullptr, 0, nullptr, 0}
     };
     //* Args management
-    while ((option=getopt_long(argc,argv,"hjJrdvVwf:s:o:",options,nullptr))!=-1) {
+    while ((option=getopt_long(argc,argv,"hHjJrdvVcwf:s:o:",options,nullptr))!=-1) {
         switch (option) {
         case 0:
             if (string(argv[optind-1])=="disable-variables-warnings") {
@@ -365,7 +570,7 @@ int main (int argc,char* argv[]) {
             }
             break;
         case 'h':
-            cout<<"Vodka v0.3 beta 3 - Vodka Objective Dictionary for Kernel Analyser\nOptions :\n  -h, --help :\n    show this help\n  -f, --find object_to_find :\n    (not working for the moment)\n  -s, --source-file source_file :\n    source file \n  -o, --output-file output_file :\n    output file\n  -v, --verbose-reduced :\n    set verbose mode to reduced\n  -V, --verbose-full :\n    set verbose mode to full\n  -d, --debug-lines :\n    enable debug mode\n  -j, --json-kernel :\n    export output to a json file specified with -o\n  -J, --json-vodka :\n    export .vod structure to a json file specified with -o\n  -r, --disable-replacements :\n    disable define replacement\n  -w, --disable-all-warnings :\n    disable warnings\n  --disable-variables-warnings :\n    disable variables warnings"<<endl;
+            cout<<"Vodka v0.3 - Vodka Objective Dictionary for Kernel Analyser\nOptions :\n  -h, --help :\n    show this help\n  -f, --find object_to_find :\n    (not working for the moment)\n  -s, --source-file source_file :\n    source file \n  -o, --output-file output_file :\n    output file\n  -v, --verbose-reduced :\n    set verbose mode to reduced\n  -V, --verbose-full :\n    set verbose mode to full\n  -d, --debug-lines :\n    enable debug mode\n  -j, --json-kernel :\n    export output to a json file specified with -o\n  -J, --json-vodka :\n    export .vod structure to a json file specified with -o\n  -r, --disable-replacements :\n    disable define replacement\n  -w, --disable-all-warnings :\n    disable warnings\n  --disable-variables-warnings :\n    disable variables warnings\n  -H, --disable-integrity-hash :\n    disable the integrity hash integration into the output\n  -c, --check-mode :\n    verify the integrity between the inputed file witn -s and the output file specified with -o"<<endl;
             return 0;
         case 'f':
             mode="find";
@@ -398,6 +603,12 @@ int main (int argc,char* argv[]) {
         case 'w':
             var_warning_enabled=false;
             break;
+        case 'H':
+            disable_integrity_hash=true;
+            break;
+        case 'c':
+            mode="check";
+            break;
         case '?':
             cout<<"Invalid argument."<<endl;
             return -1;
@@ -415,7 +626,7 @@ int main (int argc,char* argv[]) {
         return -1;
     }
     x=x+1;
-    int detectedProgramType=detect_program_type(lclstack);
+    int detectedProgramType=detect_program_type(output,lclstack);
     if (detectedProgramType==-1) {
         return -1;
     }
@@ -431,8 +642,8 @@ int main (int argc,char* argv[]) {
     }
     final.push_back("args:");
     x=x+1;
-    int makedArgSection=make_args_section(replace,lclstack);
-    if (makedArgSection==-1) {
+    int codePreTreatement=code_pre_treatement(replace,lclstack);
+    if (codePreTreatement==-1) {
         return -1;
     }
     x=x+1;
@@ -541,9 +752,9 @@ int main (int argc,char* argv[]) {
                 fcall.file_name_context=file;
                 fcall.variablesdict_context=main_variablesdict;
                 fcall.type_analyser=type_analyser;
-                vodka::library::kernel::traitement engine;
+                vodka::library::kernel::treatement engine;
                 engine.call=fcall;
-                engine.checked=engine.kernel_traitement(lclstack);
+                engine.checked=engine.kernel_treatement(lclstack);
                 if (engine.checked==false) {
                     return -1;
                 } else {
@@ -573,9 +784,9 @@ int main (int argc,char* argv[]) {
             icall.file_name_context=file;
             icall.variablesdict_context=main_variablesdict;
             icall.type_analyser=type_analyser;
-            vodka::instructions::instruction_traitement engine;
+            vodka::instructions::instruction_treatement engine;
             engine.call=icall;
-            engine.checked=engine.traitement(lclstack);
+            engine.checked=engine.treatement(lclstack);
             if (engine.checked==false) {
                 return -1;
             } else {
@@ -626,17 +837,82 @@ int main (int argc,char* argv[]) {
     x=x+1;
     log("Writing main code section :",verbose,x,last);
     a=1;
+    vector<string> kernel_sections={"main"};
+    vector<int> kernel_sections_line={(int)final.size()};
+    map<string,string> kernel_sections_content;
+    map<string,string> vodka_cell_hash;
     final.push_back("main:");
     for (auto i:instructions_main) {
         log("Writing "+i.thing+" instruction.",verbose,x,last,1,{a},{instructions_main.size()});
         final.push_back(i.syntax());
+        kernel_sections_content["main"]=kernel_sections_content["main"]+"\n"+i.syntax();
         a=a+1;
     }
-    final.push_back("endmain");
-    x=x+1;
-    log("Opening output file.",verbose,x,last);
-    ofstream outputfile(output);
-    if (mode=="compile") {
+    for (auto cell:cells) {
+        string content;
+        for (auto line:cell.content) {content=content+"\n"+line;}
+        vodka_cell_hash[cell.name]=hash_then_encode(content);
+    }
+    if (disable_integrity_hash==false) {
+        final.push_back(vodka_cell_hash["main"]+"endmain");
+        for (int i=0;i<kernel_sections_line.size();++i) {
+            final[kernel_sections_line[i]]=hash_then_encode(kernel_sections_content[kernel_sections[i]])+final[kernel_sections_line[i]];
+        }
+    } else {
+        final.push_back("endmain");
+    }
+    if (mode=="check") {
+        x=x+1;
+        if (output_file_to_check[0].substr(0,3)==u8"\u200B" || output_file_to_check[0].substr(0,3)==u8"\u2063") {
+            string binfile=split(output_file_to_check[0],"type")[0];
+            if (encode_to_bin(output)==binfile) {
+                cout<<"The output file hasn't been compiled with integrity checksum enabled. If you think there are checksum in the output file, remove all the invisibles caracters at the start of the first line and then retry."<<endl;
+            } else {
+                cout<<"The output file may have been compiled with integrity checksum enabled but someone tried to mask it by adding a wrong no-integrity tag. Remove all the invisibles caracters at the start of the first line and then retry."<<endl;
+            }
+        }
+        log("Retrieving checksum.",verbose,x,last);
+        map<string,string> vodka_checksum;
+        map<string,string> checksum_line;
+        vector<string> founded_sections;
+        for (auto line:output_file_to_check) {
+            for (auto cellcheck:cells) {
+                if (line.substr(line.size()-cellcheck.name.size(),cellcheck.name.size())==cellcheck.name) {
+                    checksum_line[cellcheck.name]=line;
+                    founded_sections.push_back(cellcheck.name);
+                    break;
+                }
+            }
+        }
+        if (find(founded_sections.begin(),founded_sections.end(),"main")==founded_sections.end()) {
+            cout<<"Can't found main section.";
+            return -1;
+        } else if (founded_sections.size()==0) {
+            cout<<"Doesn't found any section.";
+            return -1;
+        }
+        x=x+1;
+        log("Extracting checksum.",verbose,x,last);
+        for (auto sect:founded_sections) {
+            auto linet=checksum_line.at(sect);
+            string checksum=linet.substr(0,1536);
+            vodka_checksum[sect]=checksum;
+        }
+        x=x+1;
+        log("Checking checksum.",verbose,x,last);
+        cout<<endl<<"Check result:"<<endl;
+        for (auto checksum:vodka_checksum) {
+            cout<<" - "+checksum.first+": ";
+            if (checksum.second==vodka_cell_hash.at(checksum.first)) {
+                cout<<"pass"<<endl;
+            } else {
+                cout<<"failed"<<endl;
+            }
+        }
+    } else if (mode=="compile") {
+        x=x+1;
+        log("Opening output file.",verbose,x,last);
+        ofstream outputfile(output);
         x=x+1;
         log("Writing in output file :",verbose,x,last);
         if (outputfile.is_open()) {
@@ -653,6 +929,9 @@ int main (int argc,char* argv[]) {
         }
     } else if (mode=="jsonkernel") {
         x=x+1;
+        log("Opening output file.",verbose,x,last);
+        ofstream outputfile(output);
+        x=x+1;
         log("Converting kernel code to json format :",verbose,x,last);
         a=1;
         auto now=chrono::system_clock::now();
@@ -661,9 +940,14 @@ int main (int argc,char* argv[]) {
         stringstream ss;
         bool endargs=false;
         ss<<put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
-        json_ints["metadata"]={{"type","metadata"},{"vodka_version","0.3 beta 3"},{"json_version","3"},{"source_file",file},{"timestamp",ss.str()},{"json_type","kernel"}};
-        vector<string> kernel_symbol={"code:","endcode","args:","endargs","data:","enddata"};
+        json_ints["metadata"]={{"type","metadata"},{"vodka_version","0.3"},{"json_version","4"},{"source_file",file},{"timestamp",ss.str()},{"json_type","kernel"}};
+        vector<string> kernel_symbol={"args:","endargs","data:","enddata"};
+        for (auto b:kernel_sections) {
+            kernel_symbol.push_back(b+":");
+            kernel_symbol.push_back("end"+b);
+        }
         for (const string& line:final) {
+            string actualcell="main";
             log("Converting line "+to_string(a)+".",verbose,x,last,1,{a},{final.size()});
             if (find(kernel_symbol.begin(),kernel_symbol.end(),line)==kernel_symbol.end() && line.substr(0,4)!="type") {
                 if (std::isalpha(line[0]) && std::isupper(line[0])) {
@@ -672,7 +956,7 @@ int main (int argc,char* argv[]) {
                     jsonth.intname=split(line," ")[0];
                     auto eles=split(line," ");
                     jsonth.args=vector<string>(eles.begin()+1,eles.end());
-                    json_ints[to_string(a)+":"+to_string(genuid())]=jsonth.syntax();
+                    json_ints[to_string(a)+"@"+actualcell+":"+to_string(genuid())]=jsonth.syntax();
                     a=a+1;
                 } else {
                     vodka::json::kernel::json_container jsonth;
@@ -689,11 +973,11 @@ int main (int argc,char* argv[]) {
                     }
                     jsonth.args={otherside};
                     json_ints[to_string(a)+":"+to_string(genuid())]=jsonth.syntax();
-                    a=a+1;
                 }
             } else if (line=="endargs") {
                 endargs=true;
             }
+            a=a+1;
         }
         x=x+1;
         log("Writing json file.",verbose,x,last);
@@ -703,13 +987,16 @@ int main (int argc,char* argv[]) {
         if (verbose=="r" || verbose=="a") {cout<<"\nSucessfully compile "+file+" to "+output<<endl;}
     } else if (mode=="jsonvodka") {
         x=x+1;
+        log("Opening output file.",verbose,x,last);
+        ofstream outputfile(output);
+        x=x+1;
         log("Converting vodka code to json format :",verbose,x,last);
         auto now=chrono::system_clock::now();
         time_t now_c=chrono::system_clock::to_time_t(now);
         tm utc=*std::gmtime(&now_c);
         stringstream ss;
         ss<<put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
-        json_ints_v["metadata"]={{"metadata",{{"type","metadata"},{"vodka_version","0.3 beta 3"},{"json_version","3"},{"source_file",file},{"timestamp",ss.str()},{"json_type","vodka"}}}};
+        json_ints_v["metadata"]={{"metadata",{{"type","metadata"},{"vodka_version","0.3"},{"json_version","4"},{"source_file",file},{"timestamp",ss.str()},{"json_type","vodka"}}}};
         log("Converting symbols : ",verbose,x,last,1,{1},{2});
         json_ints_v["symbols"]={};
         bool cellstart=false;
@@ -741,7 +1028,7 @@ int main (int argc,char* argv[]) {
             json_ints_v["symbols"][to_string(i+1)+":"+to_string(genuid())]=symb.syntax();
         }
         log("Converting cells : ",verbose,x,last,1,{2},{2});
-        vector<string> vodkaints={"multiply"};
+        vector<string> vodkaints=vodka::vodka_instruction;
         for (int i=0;i<idencell.size();++i) {
             log("Converting cell "+cells[i].name+".",verbose,x,last,2,{2,i+1},{2,cells.size()});
             auto cellcontent=cells[i].content;

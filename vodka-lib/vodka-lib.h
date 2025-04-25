@@ -11,13 +11,14 @@
 #include <iostream>
 using namespace std;
 //* Vodka standard utilities
+//* For documentation, please refer to vodka-lib-usage.md
 namespace vodka {
-    const string version="0.3 beta 3";
-    const string json_version="3";
+    const string version="0.3";
+    const string json_version="4";
     //* Every library that has a reserved name inside the transcoder
     const vector<string> internal_library={"kernel"};
     //* Every functions for every internal library
-    const map<string,vector<string>> internal_library_functions={{"kernel",{"print","add","assign","free","invert","back","duplicate","abs","divmod","toint","todec","divide"}}};
+    const map<string,vector<string>> internal_library_functions={{"kernel",{"print","add","assign","free","invert","back","duplicate","abs","divmod","toint","todec","divide","mulint","muldec"}}};
     //* Every internal type
     const vector<string> internal_type={"vodint","vodec","vodarg","vodka"};
     //* Every syscall
@@ -129,7 +130,7 @@ namespace vodka {
                 syscall info;
             ABS() {
                 info.name="ABS";
-                info.support_multiple_argument=true;
+                info.support_multiple_argument=false;
             }
         };
         class DIVMOD {
@@ -340,9 +341,6 @@ namespace vodka {
         namespace vodint {
             bool check_value(const string& value,vodka::analyser::line context,sources_stack lclstack={});
             string remove_zero(const string& value,sources_stack lclstack={});
-            string invert_value(const string& value,sources_stack lclstack={});
-            string calculate_sign(const string& value1,const string& value2,sources_stack lclstack={});
-            string abs(const string& value,sources_stack lclstack={});
         }
         //* Vodec utilities (see vodka-lib.cpp for more informations)
         namespace vodec {
@@ -369,7 +367,7 @@ namespace vodka {
             class instruction {
                 public:
                     string name;
-                    string source="<vodka>";
+                    string source="<builtin>";
                     string library;
                     string uid;
                     vector<string> args;
@@ -459,18 +457,18 @@ namespace vodka {
         //* Kernel internal library
         namespace kernel {
             using namespace vodka::errors;
-            //* Every datatypes supported by each function of kernel internal library
-            const map<string,vector<string>> supported_type={{"add",{"vodint","vodec"}}};
             //* Main class for parsing line that call kernel internal library
-            class traitement {
+            class treatement {
                 public:
                     vodka::library::function_call call;
                     vector<vodka::syscalls::syscall_container> syscall_output;
                     bool checked=false;
                     bool var_flag=false;
                     //* Main function for parsing kernel internal library
-                    bool kernel_traitement(sources_stack lclstack={});
+                    bool kernel_treatement(sources_stack lclstack={});
                 private:
+                    //* Every datatypes supported by each function of kernel internal library
+                    const map<string,vector<string>> supported_type={{"add",{"vodint","vodec"}},{"abs",{"vodint","vodec"}}};
                     string line;
                     //* Private functions for analysing each instructions
                     bool print_int(sources_stack lclstack={});
@@ -482,14 +480,14 @@ namespace vodka {
                     bool toint_int(sources_stack lclstack={});
                     bool todec_int(sources_stack lclstack={});
                     bool divide_int(sources_stack lclstack={});
+                    bool mulint_int(sources_stack lclstack={});
+                    bool muldec_int(sources_stack lclstack={});
             };
         }
     }
     //* Internal instructions
     namespace instructions {
         using namespace vodka::errors;
-        //* Every datatype supported by each vodka codebase instructions
-        const map<string,vector<string>> supported_type={{"multiply",{"vodint","vodec"}}};
         //* Class for a line that call a vodka instruction
         class instruction_call {
             public:
@@ -503,16 +501,17 @@ namespace vodka {
                 string last_logstep_context;
                 map<string,vodka::variables::element> variablesdict_context;
         };
-        class instruction_traitement {
+        class instruction_treatement {
             public:
                 vodka::instructions::instruction_call call;
                 vector<vodka::syscalls::syscall_container> syscalls_output;
                 bool checked=false;
                 bool var_flag=false;
                 //* Main function for parsing vodka instruction
-                bool traitement(sources_stack lclstack={});
+                bool treatement(sources_stack lclstack={});
             private:
                 string line;
+                const map<string,vector<string>> supported_type={{"multiply",{"vodint","vodec"}}};
                 //* Private functions for analysing each instructions
                 bool multiply(sources_stack lclstack={});
         };

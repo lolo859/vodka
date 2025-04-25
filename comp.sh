@@ -1,5 +1,13 @@
 #!/bin/bash
 echo "Automated Linker and Compilation Of Highly Object Oriented Language"
+if command -v g++ >/dev/null 2>&1; then
+    COMPILER="g++"
+    VERSION=$($COMPILER -dumpversion)
+else
+    echo "g++ isn't detected and clang isn't supported for the moment. Exiting."
+    exit 1
+fi
+echo "Using $COMPILER ($VERSION)"
 case "$1" in
     library)
         echo "Building Library"

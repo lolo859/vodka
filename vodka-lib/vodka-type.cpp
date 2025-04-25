@@ -90,40 +90,6 @@ string vodka::type::vodint::remove_zero(const string& value,sources_stack lclsta
     }
     return out;
 }
-//* Invert value for vodint value
-string vodka::type::vodint::invert_value(const string& value,sources_stack lclstack) {
-    auto srclclstack=lclstack;
-    srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    string out;
-    if (value.substr(0,1)=="-") {
-        out=value.substr(1,value.length()-1);
-    } else {
-        out="-"+value;
-    }
-    return out;
-}
-//* Calculate the sign of a multiplication/division between two vodint values
-string vodka::type::vodint::calculate_sign(const string& value1,const string& value2,sources_stack lclstack) {
-    auto srclclstack=lclstack;
-    srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    if (value1.substr(0,1)!="-" && value2.substr(0,1)!="-") {
-        return "";
-    } else if (value1.substr(0,1)=="-" && value2.substr(0,1)=="-") {
-        return "";
-    } else {
-        return "-";
-    }
-}
-//* Calculate the absolute value of a vodint value
-string vodka::type::vodint::abs(const string& value,sources_stack lclstack) {
-    auto srclclstack=lclstack;
-    srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    if (value.substr(0,1)=="-") {
-        return value.substr(1,value.length()-1);
-    } else {
-        return value;
-    }
-}
 //* Checking if the inputed value for vodec is correct
 bool vodka::type::vodec::check_value(const string& value,vodka::analyser::line context,sources_stack lclstack) {
     auto srclclstack=lclstack;

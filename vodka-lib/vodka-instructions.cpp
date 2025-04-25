@@ -40,7 +40,7 @@ namespace inside_instruction {
 };
 using namespace inside_instruction;
 //* Private functions for analysing each instructions
-bool vodka::instructions::instruction_traitement::multiply(sources_stack lclstack) {
+bool vodka::instructions::instruction_treatement::multiply(sources_stack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
     log("Checking instruction syntax.",call.verbose_context,call.main_logstep_context,call.last_logstep_context,2,{(int)call.iteration_number_context+1,1},{call.cell_context.content.size(),4});
@@ -62,7 +62,7 @@ bool vodka::instructions::instruction_traitement::multiply(sources_stack lclstac
         log("Checking content datatype.",call.verbose_context,call.main_logstep_context,call.last_logstep_context,2,{(int)call.iteration_number_context+1,3},{call.cell_context.content.size(),4});
         vector<string> argsname(eles.begin()+1,eles.end());
         for (auto a:argsname) {
-            if (find(vodka::instructions::supported_type.at("multiply").begin(),vodka::instructions::supported_type.at("multiply").end(),call.variablesdict_context[a].thing)==vodka::instructions::supported_type.at("multiply").end()) {
+            if (find(supported_type.at("multiply").begin(),supported_type.at("multiply").end(),call.variablesdict_context[a].thing)==supported_type.at("multiply").end()) {
                 raise(error_container("vodka.error.instruction.multiply.wrong_type : "+a+" isn't vodint or vodec type.",call.file_name_context,{line},{call.cell_context.start.line+(int)call.iteration_number_context+1},srclclstack));
                 return false;
             }
@@ -168,7 +168,7 @@ bool vodka::instructions::instruction_traitement::multiply(sources_stack lclstac
     return false;
 }
 //* Main function for parsing vodka instruction
-bool vodka::instructions::instruction_traitement::traitement(sources_stack lclstack) {
+bool vodka::instructions::instruction_treatement::treatement(sources_stack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
     line=call.type_analyser.line_analyse.content;

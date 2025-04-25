@@ -39,7 +39,6 @@ namespace inside_errors {
 }
 using namespace inside_errors;
 //* Error output function
-//* Error output function
 void vodka::errors::raise(error_container element) {
     auto error=element.error;
     auto file=element.file;
