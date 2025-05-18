@@ -28,6 +28,7 @@ Vodka is a high level language designed to be transcoded to Kernel code. It has 
   - [vodka](#vodka)
 - [Internal libraries](#internal-libraries)
   - [kernel](#kernel)
+    - [print](#print)
     - [add](#add)
     - [invert](#invert)
     - [free](#free)
@@ -305,6 +306,7 @@ Internal librairies are groups of functions directely integrated inside the vodk
 
 The `kernel` internal librairy allow for the direct usage of syscalls. It contain the following functions: 
 
+- [print](#print)
 - [add](#add)
 - [invert](#invert)
 - [free](#free)
@@ -316,11 +318,17 @@ The `kernel` internal librairy allow for the direct usage of syscalls. It contai
 - [mulint](#mulint)
 - [muldec](#muldec)
 
+#### print
+
+Used to print variables, each arguments can be `vodint`, `vodec` or `vodarg`.
+
+Syntax : `kernel.print <var1> <var2> ... <var_n>`
+
 #### add
 
 Used to add `vodint` or `vodec` variables, all arguments must be the same type.
 
-Syntax: `kernel.add kernel.add <output_variable> <add1> <add2> ... <add_n>`
+Syntax: `kernel.add <output_variable> <add1> <add2> ... <add_n>`
 
 #### invert
 
@@ -348,13 +356,13 @@ Syntax: `kernel.divmod <result> <rest> <dividend> <divisor>`
 
 #### toint
 
-Used to automatically erase the decimal part of a `vodec` input. Ouput must be `vodint` type.
+Used to automatically erase the decimal part of a `vodec` or `vodarg` input. Ouput must be `vodint` type.
 
 Syntax: `kernel.toint <output_variable> <input_variable>`
 
 #### todec
 
-Used to automatically add a empty decimal part to a `vodint` input. Ouput must be `vodec` type.
+Used to automatically add a empty decimal part to a `vodint` or `vodarg` input. Ouput must be `vodec` type.
 
 Syntax: `kernel.todec <output_variable> <input_variable>`
 
