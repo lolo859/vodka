@@ -13,20 +13,22 @@ using namespace std;
 //* Vodka standard utilities
 //* For documentation, please refer to vodka-lib-usage.md
 namespace vodka {
-    const string LibraryVersion="0.4 beta 1";
+    const string LibraryVersion="0.4 beta 2";
     const string JsonVersion="4";
     //* Every library that has a reserved name inside the transcoder
     const vector<string> InternalLibraryList={"kernel"};
     //* Every functions for every internal library
     const map<string,vector<string>> InternalLibraryFunctions={{"kernel",{"print","add","assign","free","invert","back","duplicate","abs","divmod","toint","todec","divide","mulint","muldec"}}};
     //* Every internal type
-    const vector<string> InternalDataypes={"vodint","vodec","vodarg","vodka"};
+    const vector<string> InternalDataypes={"vodint","vodec","vodstr","vodarg","vodka"};
     //* Every syscall
     const vector<string> InternalSyscalls={"PRINT","ADD","ASSIGN","FREE","INVERT","DUPLICATE","ABS","DIVMOD","TOINT","TODEC","MULINT","MULDEC","DIVIDE"};
     //* Every vodka codebase instructions
-    const vector<string> VodkaInstructions={"multiply"};
+    const vector<string> VodkaInstructions={"multiply","tostr"};
     //* Every conversions possible using syscalls
-    const map<string,vector<string>> ConversionsSyscalls={{"TOINT",{"vodec","vodarg"}},{"TODEC",{"vodint","vodarg"}}};
+    const map<string,vector<string>> ConversionsSyscalls={{"TOINT",{"vodec","vodarg","vodstr"}},{"TODEC",{"vodint","vodarg","vodstr"}}};
+    //* Every conversions possible using syscalls
+    const map<string,vector<string>> ConversionsInstructions={{"tostr",{"vodint","vodec","vodarg"}}};
     //* Errors handling
     namespace errors {
         //* Contain the call stack of the error
@@ -188,6 +190,7 @@ namespace vodka {
         enum class VariableDatatype {
             vodint,
             vodec,
+            vodstr,
             vodarg
         };
         //* Convert VariableDatatype object to string
@@ -212,6 +215,11 @@ namespace vodka {
             public:
                 string value;
         };
+        //* Vodec type class : optimize for vodec internal structure
+        class VodstrVariable {
+            public:
+                string value;
+        };
         //* Vodarg type class : optimize for vodarg internal structure
         class VodargVariable {
             public:
@@ -224,6 +232,7 @@ namespace vodka {
                 VariableMetadata variable_metadata;
                 VodintVariable vodint_element;
                 VodecVariable vodec_element;
+                VodstrVariable vodstr_element;
                 VodargVariable vodarg_element;
         };
     }
@@ -371,34 +380,41 @@ namespace vodka {
     //* General utilities
     namespace utilities {
         //* Vodka structure
-        struct symbol {
-            int line;
-            string content;
-            string type;
-        };
-        struct cell {
-            vector<string> content;
-            string name;
-            vector<string> args;
-            vector<string> outs;
-            symbol start;
-            symbol end;
-        };
-        struct import {
-            string file;
-            string type;
-            string importas;
-            vector<string> content;
-        };
+        namespace structs {
+            struct symbol {
+                int line;
+                string content;
+                string type;
+            };
+            struct cell {
+                vector<string> content;
+                string name;
+                vector<string> args;
+                vector<string> outs;
+                symbol start;
+                symbol end;
+            };
+            struct import {
+                string file;
+                string type;
+                string importas;
+                vector<string> content;
+            };
+        }
         //* UUID generator
         boost::uuids::uuid genuid();
         //* Logs functions
-        void log(string text,int log_main_step,string last,int sublevel=0,vector<int> substep={},vector<unsigned long> subtotal={});
-        void debuglog(string text,int line,string cell,string file,bool debug_info=true);
-        void var_warning(string namevar,vodka::variables::VariableDatatype typevar,string namecell,string line);
+        namespace output {
+            void log(string text,int log_main_step,string last,int sublevel=0,vector<int> substep={},vector<unsigned long> subtotal={});
+            void debuglog(string text,int line,string cell,string file,bool debug_info=true);
+            void var_warning(string namevar,vodka::variables::VariableDatatype typevar,string namecell,string line);
+        }
         //* String utilities
-        vector<string> split(string str,string delimiter);
-        void replaceall(string str,string from,string to);
+        namespace string_utilities {
+            vector<string> split(string str,string delimiter);
+            void replaceall(string str,string from,string to);
+            string strip(string text,string character);
+        }
         double get_process_time();
     }
     //* Internal library
@@ -408,7 +424,7 @@ namespace vodka {
             public:
                 vodka::analyser::LineTypeChecker line_checked;
                 vector<string> variableslist_context;
-                vodka::utilities::cell cell_context;
+                vodka::utilities::structs::cell cell_context;
                 int iteration_number_context;
                 string file_name_context;
                 string verbose_context;
@@ -453,7 +469,7 @@ namespace vodka {
             public:
                 vodka::analyser::LineTypeChecker line_checked;
                 vector<string> variableslist_context;
-                vodka::utilities::cell cell_context;
+                vodka::utilities::structs::cell cell_context;
                 int iteration_number_context;
                 string file_name_context;
                 string verbose_context;
@@ -471,9 +487,9 @@ namespace vodka {
                 bool call_treatement(vodka::errors::SourcesStack lclstack={});
             private:
                 string line;
-                const map<string,vector<string>> supported_type={{"multiply",{"vodint","vodec"}}};
                 //* Private functions for analysing each instructions
                 bool multiply(vodka::errors::SourcesStack lclstack={});
+                bool tostr(vodka::errors::SourcesStack lclstack={});
         };
     }
 }

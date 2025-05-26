@@ -16,20 +16,20 @@ void vodka::errors::raise(ErrorContainer element) {
     auto filesource=element.source.file;
     for (int i=0;i<filesource.size();++i) {
         string filepath=filesource[i];
-        replaceall(filepath,"/",">");
+        string_utilities::replaceall(filepath,"/",">");
         filepath=filepath+">";
         auto namepath=source[i];
-        auto namepathsplit=split(namepath," ")[1];
-        auto namewithoutpar=split(namepathsplit,"(")[0];
+        auto namepathsplit=string_utilities::split(namepath," ")[1];
+        auto namewithoutpar=string_utilities::split(namepathsplit,"(")[0];
         source[i]=filepath+namewithoutpar;
     }
     string linestr="";
     if (source.size()!=0) {
         for (int i=0;i<source.size();i++) {
-            auto path=split(source[i],">");
+            auto path=string_utilities::split(source[i],">");
             auto sourcename=path[path.size()-1];
             path.pop_back();
-            auto sourcenamepath=split(sourcename,"::");
+            auto sourcenamepath=string_utilities::split(sourcename,"::");
             auto functionname=sourcenamepath[sourcenamepath.size()-1];
             if (i!=0) {
                 cout<<"[ERROR]   "<<"["+to_string(i+1)+"] Called function "<<termcolor::magenta<<termcolor::bold<<functionname<<termcolor::reset<<", located in :"<<endl;

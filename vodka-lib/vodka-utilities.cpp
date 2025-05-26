@@ -20,7 +20,7 @@ double vodka::utilities::get_process_time() {
     return user_time+sys_time;
 }
 //* String utilities
-vector<string> vodka::utilities::split(string str,string delimiter) {
+vector<string> vodka::utilities::string_utilities::split(string str,string delimiter) {
     vector<string> tokens;
     size_t start=0;
     size_t end=str.find(delimiter);
@@ -36,12 +36,23 @@ vector<string> vodka::utilities::split(string str,string delimiter) {
     }
     return tokens;
 }
-void vodka::utilities::replaceall(string str,string from,string to) {
+void vodka::utilities::string_utilities::replaceall(string str,string from,string to) {
     size_t start_pos=0;
     while ((start_pos=str.find(from, start_pos))!=string::npos) {
         str.replace(start_pos,from.length(),to);
         start_pos+=to.length();
     }
+}
+string vodka::utilities::string_utilities::strip(string text,string character) {
+    if (character.size()!=1) {
+        return nullptr;
+    }
+    char target=character[0];
+    size_t i=0;
+    while (i<text.size() && text[i]==target) {
+        ++i;
+    }
+    return text.substr(i);
 }
 //* UUID generator
 boost::uuids::uuid vodka::utilities::genuid() {
@@ -50,7 +61,7 @@ boost::uuids::uuid vodka::utilities::genuid() {
     return uuid;
 }
 //* Logs functions
-void vodka::utilities::log(string text,int log_main_step,string last,int sublevel,vector<int> substep,vector<unsigned long> subtotal) {
+void vodka::utilities::output::log(string text,int log_main_step,string last,int sublevel,vector<int> substep,vector<unsigned long> subtotal) {
     const char* format=getenv("VODKA_SHOW_LOG_TIME");
     string time;
     if (format!=nullptr && string(format)=="TRUE") {
@@ -95,7 +106,7 @@ void vodka::utilities::log(string text,int log_main_step,string last,int subleve
         }
     }
 }
-void vodka::utilities::debuglog(string text,int line,string cell,string file,bool debug_info) {
+void vodka::utilities::output::debuglog(string text,int line,string cell,string file,bool debug_info) {
     const char* format=getenv("VODKA_SHOW_LOG_TIME");
     string time;
     if (format!=nullptr && string(format)=="TRUE") {
@@ -147,7 +158,7 @@ void vodka::utilities::debuglog(string text,int line,string cell,string file,boo
         }
     }
 }
-void vodka::utilities::var_warning(string namevar,vodka::variables::VariableDatatype typevar,string namecell,string line) {
+void vodka::utilities::output::var_warning(string namevar,vodka::variables::VariableDatatype typevar,string namecell,string line) {
     const char* format=getenv("VODKA_SHOW_LOG_TIME");
     string time;
     if (format!=nullptr && string(format)=="TRUE") {

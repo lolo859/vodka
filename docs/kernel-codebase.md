@@ -122,7 +122,7 @@ Syntax: `INVERT <uid>`
 
 ### DUPLICATE
 
-The `DUPLICATE` instruction duplicates variables.
+The `DUPLICATE` instruction duplicates values of inputed variable into output variable. If the output variable doesn't exist, it will create a new one.
 
 Syntax: `DUPLICATE <output_uid> <source_uid>`
 

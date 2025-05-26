@@ -26,6 +26,7 @@ Vodka is a high level language designed to be transcoded to Kernel code. It has 
   - [vodec](#vodec)
   - [vodarg](#vodarg)
   - [vodka](#vodka)
+  - [vodstr](#vodstr)
 - [Internal libraries](#internal-libraries)
   - [kernel](#kernel)
     - [print](#print)
@@ -41,6 +42,7 @@ Vodka is a high level language designed to be transcoded to Kernel code. It has 
     - [muldec](#muldec)
 - [Internal instructions](#internal-instructions)
   - [multiply](#multiply)
+  - [tostr](#tostr)
 
 ## Program types
 
@@ -228,6 +230,7 @@ Variables can be of the following datatype with each their own syntax:
 - [vodec](#vodec)
 - [vodarg](#vodarg)
 - [vodka](#vodka)
+- [vodstr](#vodstr)
 
 ### vodint
 
@@ -289,6 +292,31 @@ Use the `%` to directely insert a `vodint` value in a function/instruction call.
 
 **Note:** scientific notation isn't supported yet.
 
+### vodstr
+
+The `vodstr` datatype is used to store any string. It can include `\n` and `\u` elements.
+
+Code example:
+```
+vodka a=vodstr hello
+vodka b=vodstr   hello  
+vodka c=vodstr hello\nworld!
+```
+
+Code example:
+```
+type command
+args:
+endargs
+data:
+enddata
+main:
+ASSIGN 9b8a5f4d-0d4d-4f9b-a688-393e3323cd8c hello
+ASSIGN c91ef0e6-f4b7-4e9e-84b2-6f6d60401eda   hello  
+ASSIGN ee154182-e4e7-4ad6-87b4-919e79ca0887 hello\nworld!
+​⁣​⁣⁣⁣​​⁣​⁣⁣​⁣​​⁣​⁣⁣⁣⁣⁣​​​​⁣​​⁣​⁣⁣​​⁣⁣⁣⁣​​​​​​​⁣​⁣⁣⁣⁣​⁣⁣​⁣⁣⁣​⁣⁣​​⁣​⁣​​⁣⁣​⁣⁣⁣⁣​⁣​​⁣​​​⁣​⁣​⁣​​⁣⁣⁣⁣​​⁣​​⁣⁣⁣⁣⁣​​​​​⁣⁣​⁣​​⁣​⁣⁣​⁣​⁣​​​​⁣​​​​⁣​endmain
+```
+
 ### vodarg
 
 The `vodarg` datatype is a datatype for cells arguments. Technically, it represent a string but it can be used instead of the following datatype: `vodint`, `vodec` (unless specified).
@@ -320,7 +348,7 @@ The `kernel` internal librairy allow for the direct usage of syscalls. It contai
 
 #### print
 
-Used to print variables, each arguments can be `vodint`, `vodec` or `vodarg`.
+Used to print variables, each arguments can be `vodint`, `vodec`, `vodstr` or `vodarg`.
 
 Syntax : `kernel.print <var1> <var2> ... <var_n>`
 
@@ -356,13 +384,13 @@ Syntax: `kernel.divmod <result> <rest> <dividend> <divisor>`
 
 #### toint
 
-Used to automatically erase the decimal part of a `vodec` or `vodarg` input. Ouput must be `vodint` type.
+Used to automatically erase the decimal part of a `vodec`, `vodstr` or `vodarg` input. Ouput must be `vodint` type.
 
 Syntax: `kernel.toint <output_variable> <input_variable>`
 
 #### todec
 
-Used to automatically add a empty decimal part to a `vodint` or `vodarg` input. Ouput must be `vodec` type.
+Used to automatically add a empty decimal part to a `vodint`, `vodstr` or `vodarg` input. Ouput must be `vodec` type.
 
 Syntax: `kernel.todec <output_variable> <input_variable>`
 
@@ -388,6 +416,7 @@ Syntax: `kernel.muldec <output_uid> <first_term_uid> <second_term_uid> <precisio
 
 Internal instructions are like internal librairies but doesn't belong to any librairy. Here is the list of every internal instructions :
 - [multiply](#multiply)
+- [tostr](#tostr)
 
 ### multiply
 
@@ -400,3 +429,11 @@ The `multiply` instruction is used to multiply two numbers together. It has two 
   - Usage : multiply two `vodec` variables
   - Syntax : `multiply <output_variable> <first_term_variable> <second_term_variable> <precision_variable>`
   - Note : precision must be `vodint`. All other arguments must be `vodec`.
+
+### tostr
+
+The `tostr` convert any variable into a `vodstr` variable.
+
+Syntax: `tostr <output_variable> <source_variable>`
+
+`<output_variable>` must be `vodstr` datatype and `<source_variable>` can be `vodint`, `vodec` or `vodarg` datatype.

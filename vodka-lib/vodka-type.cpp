@@ -77,7 +77,7 @@ bool vodka::type::vodec::check_value(string value,vodka::analyser::LineSyntaxChe
         raise(ErrorContainer("vodka.error.vodec.invalid_value : Invalid value for vodec : "+value,context.file,{context.content},{context.line_number},srclclstack));
         return false;
     }
-    auto part=split(value,".");
+    auto part=string_utilities::split(value,".");
     if (part.size()!=2 || part[0]=="-") {
         raise(ErrorContainer("vodka.error.vodec.invalid_value : Invalid value for vodec : "+value,context.file,{context.content},{context.line_number},srclclstack));
         return false;
@@ -111,7 +111,7 @@ string vodka::type::vodec::remove_zero(string value,SourcesStack lclstack) {
     } else {
         newvalue=value;
     }
-    auto twopart=split(newvalue,".");
+    auto twopart=string_utilities::split(newvalue,".");
     string newintpart=vodka::type::vodint::remove_zero(twopart[0],srclclstack);
     auto decpart=twopart[1];
     string newdecpart;
