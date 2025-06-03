@@ -24,6 +24,14 @@ Kernel code is the low-level, intermediate language designed to be the final tar
   - [MULDEC](#muldec)
   - [MULINT](#mulint)
   - [DIVIDE](#divide)
+  - [LENGTH](#lenght)
+  - [CONCAT](#concat)
+  - [SUBSTRING](#substring)
+  - [CHARAT](#charat)
+  - [REVERSE](#reverse)
+  - [ESCAPE](#escape)
+  - [INSERT](#insert)
+  - [FIND](#find)
 
 ## Sections
 
@@ -87,20 +95,28 @@ Instructions (or syscalls) are always written in capital letter and can't be add
 - [MULDEC](#muldec)
 - [MULINT](#mulint)
 - [DIVIDE](#divide)
+- [LENGTH](#lenght)
+- [CONCAT](#concat)
+- [SUBSTRING](#substring)
+- [CHARAT](#charat)
+- [REVERSE](#reverse)
+- [ESCAPE](#escape)
+- [INSERT](#insert)
+- [FIND](#find)
 
 A lot of these instructions are accessible using the [kernel](vodka-codebase.md#kernel) internal library.
 
 ### PRINT
 
-The `PRINT` instruction output variables to standard output.
+The `PRINT` instruction output a variable to standard output.
 
-Syntax: `PRINT <uid_1> <uid_2> ... <uid_n>`
+Syntax: `PRINT <uid>`
 
 ### ADD
 
-The `ADD` instruction adds variables together. All arguments except the output must have either a integer or decimal number syntax.
+The `ADD` instruction adds two variables together. All arguments except the output must have either a integer or decimal number syntax.
 
-Syntax: `ADD <output_uid> <first_term> <second_term> ... <n_term>`
+Syntax: `ADD <output_uid> <first_term> <second_term>`
 
 ### ASSIGN
 
@@ -110,9 +126,9 @@ Syntax: `ASSIGN <uid> value`
 
 ### FREE
 
-The `FREE` instruction deletes variables.
+The `FREE` instruction deletes variable.
 
-Syntax: `FREE <uid_1> <uid_2> ... <uid_n>`
+Syntax: `FREE <uid>`
 
 ### INVERT
 
@@ -167,3 +183,51 @@ Syntax: `MULDEC <output_uid> <first_term> <second_term> <precision_uid>`
 The `DIVIDE` instruction divide two decimals numbers together. The first and second term must have a decimal number syntax and the precision must have a integer number syntax.
 
 Syntax: `DIVIDE <output_uid> <first_term> <second_term> <precision_uid>`
+
+### LENGHT
+
+The `LENGHT` instruction give the length of a variable.
+
+Syntax: `DIVIDE <output_uid> <source_uid>`
+
+### CONCAT
+
+The `CONCAT` instruction concatenate two strings together.
+
+Syntax: `DIVIDE <output_uid> <first_uid> <second_uid>`
+
+### SUBSTRING
+
+The `SUBSTRING` instruction give a substring inside a variable.
+
+Syntax: `DIVIDE <output_uid> <source_uid> <start_index_uid> <substring_length_uid>`
+
+### CHARAT
+
+The `CHARAT` instruction is like the `SUBSTRING` instruction but for only one character.
+
+Syntax: `CHARAT <output_uid> <source_uid> <index_uid>`
+
+### REVERSE
+
+The `REVERSE` instruction reverse a variable.
+
+Syntax: `REVERSE <output_uid> <source_uid>`
+
+### ESCAPE
+
+The `ESCAPE` instruction convert every `\n` and `\u` element into text, allowing for considering them as text and not as replacement tag.
+
+Syntax: `ESCAPE <output_uid> <input_uid>`
+
+### INSERT
+
+The `INSERT` instruction insert a variable at an index inside another variable.
+
+Syntax: `INSERT <output_uid> <source_uid> <index_uid> <string_to_insert_uid>`
+
+### FIND
+
+The `FIND` instruction find the first occurence of a single character (UTF-8 is supported).
+
+Syntax: `FIND <output_uid> <source_uid> <char_uid>`

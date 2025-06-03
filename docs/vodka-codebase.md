@@ -35,14 +35,24 @@ Vodka is a high level language designed to be transcoded to Kernel code. It has 
     - [free](#free)
     - [abs](#abs)
     - [divmod](#divmod)
-    - [toint](#toint)
-    - [todec](#todec)
     - [divide](#divide)
     - [mulint](#mulint)
     - [muldec](#muldec)
-- [Internal instructions](#internal-instructions)
-  - [multiply](#multiply)
-  - [tostr](#tostr)
+  - [conversions](#conversions)    
+    - [toint](#toint)
+    - [todec](#todec)
+    - [tostr](#tostr)
+  - [vodstr](#vodstr)
+    - [length](#lenght)
+    - [concat](#concat)
+    - [substring](#substring)
+    - [charat](#charat)
+    - [reverse](#reverse)
+    - [escape](#escape)
+    - [insert](#insert)
+    - [find](#find)
+  - [math](#math)
+    - [multiply](#multiply)
 
 ## Program types
 
@@ -234,7 +244,7 @@ Variables can be of the following datatype with each their own syntax:
 
 ### vodint
 
-The `vodint` datatype is used to store any integer, both positives and negatives numbers, without any decimal part. The number can be any size.
+The `vodint` datatype is used to store any integer, both positives and negatives numbers, without any decimal part. The number can be any size. A `vodint` variable can be non-declared by using the keyword `null`.
 
 Code example:
 ```
@@ -262,7 +272,7 @@ Use the `#` to directely insert a `vodint` value in a function/instruction call.
 
 ### vodec
 
-The `vodec` datatype is used to store any floating point number, both positives and negatives numbers, with an integer and a decimal part. The number can be any size for both part.
+The `vodec` datatype is used to store any floating point number, both positives and negatives numbers, with an integer and a decimal part. The number can be any size for both part. A `vodec` variable can be non-declared by using the keyword `null`.
 
 Code example:
 ```
@@ -332,7 +342,7 @@ Internal librairies are groups of functions directely integrated inside the vodk
 
 ### kernel
 
-The `kernel` internal librairy allow for the direct usage of syscalls. It contain the following functions: 
+The `kernel` internal library allow for the direct usage of syscalls. It contain the following functions: 
 
 - [print](#print)
 - [add](#add)
@@ -340,8 +350,6 @@ The `kernel` internal librairy allow for the direct usage of syscalls. It contai
 - [free](#free)
 - [abs](#abs)
 - [divmod](#divmod)
-- [toint](#toint)
-- [todec](#todec)
 - [divide](#divide)
 - [mulint](#mulint)
 - [muldec](#muldec)
@@ -382,18 +390,6 @@ Used to get the quotient and the rest of a euclidian division. All arguments mus
 
 Syntax: `kernel.divmod <result> <rest> <dividend> <divisor>`
 
-#### toint
-
-Used to automatically erase the decimal part of a `vodec`, `vodstr` or `vodarg` input. Ouput must be `vodint` type.
-
-Syntax: `kernel.toint <output_variable> <input_variable>`
-
-#### todec
-
-Used to automatically add a empty decimal part to a `vodint`, `vodstr` or `vodarg` input. Ouput must be `vodec` type.
-
-Syntax: `kernel.todec <output_variable> <input_variable>`
-
 #### divide
 
 Used to divide `vodec` variables. All arguments except the precision must be `vodec` type and the precision must be `vodint` type.
@@ -412,28 +408,109 @@ Used to multiply `vodec` variables. All arguments except the precision must be `
 
 Syntax: `kernel.muldec <output_uid> <first_term_uid> <second_term_uid> <precision_uid>`
 
-## Internal instructions
+### conversions
 
-Internal instructions are like internal librairies but doesn't belong to any librairy. Here is the list of every internal instructions :
-- [multiply](#multiply)
+The `conversions` internal library allow to convert datatypes between each other. It contain the following functions :
+
+- [toint](#toint)
+- [todec](#todec)
 - [tostr](#tostr)
 
-### multiply
+#### toint
 
-The `multiply` instruction is used to multiply two numbers together. It has two possibles syntaxs :
+Used to automatically erase the decimal part of a `vodec`, `vodstr` or `vodarg` input. Ouput must be `vodint` type.
+
+Syntax: `conversions.toint <output_variable> <input_variable>`
+
+#### todec
+
+Used to automatically add a empty decimal part to a `vodint`, `vodstr` or `vodarg` input. Ouput must be `vodec` type.
+
+Syntax: `conversions.todec <output_variable> <input_variable>`
+
+#### tostr
+
+Used to duplicate the value of a `vodint`, `vodstr` or `vodarg` input into a `vodstr` output.
+
+Syntax: `conversions.tostr <output_variable> <input_variable>`
+
+### vodstr
+
+The `vodstr` internal library allow for basic operations on `vodstr` variables. It contain the following functions:
+
+- [length](#lenght)
+- [concat](#concat)
+- [substring](#substring)
+- [charat](#charat)
+- [reverse](#reverse)
+- [escape](#escape)
+- [insert](#insert)
+- [find](#find)
+
+Please note that every time we mention character, we talk about UTF-8 character. Index start at 0.
+
+#### length
+
+Used to get the number of character inside a variable. Both argument must be `vodstr` variables.
+
+Syntax: `vodstr.length <output_variable> <input_variable>`
+
+#### concat
+
+Used to concatenate variables together. All arguments must be `vodstr` variables.
+
+Syntax: `vodstr.concat <output_variable> <first_variable> <second_variable> ... <variable>`
+
+#### substring
+
+Used to get a substring from a variable. The first two arguments must be `vodstr` variables. `<start_index>` and  `<substring_length>` must be `vodint` variables.
+
+Syntax: `vodstr.substring <output_variable> <input_variable> <start_index> <substring_length>`
+
+#### charat
+
+Used to get a single character from a variable. The first two arguments must be `vodstr` variables. `<index>` must be a `vodint` variable.
+
+Syntax: `vodstr.charat <output_variable> <source_variable> <index>`
+
+#### reverse
+
+Used to reverse a string. All arguments must be `vodstr` variables.
+
+Syntax: `vodstr.reverse <output_variable> <source_variable>`
+
+#### escape
+
+Used to convert every `\n` and `\u` element into text, allowing for considering them as text and not as replacement tag. All arguments must be `vodstr` variables.
+
+Syntax: `vodstr.escape <output_variable> <source_variable>`
+
+#### insert
+
+Used to insert a string inside another string at a certain index. All arguments must be `vodstr` variables except `<index>` which must be a `vodint` variable.
+
+Syntax: `vodstr.insert <output_variable> <source_variable> <index> <string_to_insert>`
+
+#### find
+
+Used to get the index of the first occurence of a character. All arguments must be `vodstr` variables except `<output_variable>` which must be a `vodint` variable.
+
+Syntax: `vodstr.find <output_variable> <source_variable> <char_variable>`
+
+### math
+
+The `math` internal library allow for basic operations on `vodint` and `vodec` variables. It contain the following functions:
+
+- [multiply](#multiply)
+
+#### multiply
+
+Used to multiply two numbers together. It has two possibles syntaxs :
 - without explicit precision :
   - Usage : multiply two `vodint` or `vodec` variables
-  - Syntax : `multiply <output_variable> <first_term_variable> <second_term_variable>`
+  - Syntax : `math.multiply <output_variable> <first_term_variable> <second_term_variable>`
   - Note : all arguments must be of the same type, precision is set to 3 in this case
 - with explicit precision :
   - Usage : multiply two `vodec` variables
-  - Syntax : `multiply <output_variable> <first_term_variable> <second_term_variable> <precision_variable>`
+  - Syntax : `math.multiply <output_variable> <first_term_variable> <second_term_variable> <precision_variable>`
   - Note : precision must be `vodint`. All other arguments must be `vodec`.
-
-### tostr
-
-The `tostr` convert any variable into a `vodstr` variable.
-
-Syntax: `tostr <output_variable> <source_variable>`
-
-`<output_variable>` must be `vodstr` datatype and `<source_variable>` can be `vodint`, `vodec` or `vodarg` datatype.

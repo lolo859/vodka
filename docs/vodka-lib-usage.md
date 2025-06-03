@@ -14,8 +14,6 @@ vodka-lib is the static internal C++ library that powers the Vodka transcoder an
   - [vodka::InternalLibraryFunctions](#stdvectorstdstring-vodkainternallibrarylist)
   - [vodka::InternalDatatypes](#stdvectorstdstring-vodkainternaldatatypes)
   - [vodka::InternalSyscalls](#stdvectorstdstring-vodkainternalsyscalls)
-  - [vodka::VodkaInstructions](#stdvectorstdstring-vodkavodkainstructions)
-  - [vodka::ConversionsSyscalls](#stdmapstdstring-stdvectorstdstring-vodkaconversionssyscalls)
 - [Environnements variables](#environnements-variables)
   - [VODKA_SHOW_LOG_TIME](#vodka_show_log_time)
   - [VODKA_DEBUG_MODE](#vodka_debug_mode)
@@ -41,6 +39,14 @@ vodka-lib is the static internal C++ library that powers the Vodka transcoder an
   - [class vodka::syscalls::MULINT](#class-vodkasyscallsmulint)
   - [class vodka::syscalls::MULDEC](#class-vodkasyscallsmuldec)
   - [class vodka::syscalls::DIVIDE](#class-vodkasyscallsdivide)
+  - [class vodka::syscalls::LENGTH](#class-vodkasyscallslength)
+  - [class vodka::syscalls::CONCAT](#class-vodkasyscallsconcat)
+  - [class vodka::syscalls::SUBSTRING](#class-vodkasyscallssubstring)
+  - [class vodka::syscalls::CHARAT](#class-vodkasyscallscharat)
+  - [class vodka::syscalls::REVERSE](#class-vodkasyscallsreverse)
+  - [class vodka::syscalls::ESCAPE](#class-vodkasyscallsescape)
+  - [class vodka::syscalls::INSERT](#class-vodkasyscallsinsert)
+  - [class vodka::syscalls::FIND](#class-vodkasyscallsfind)
   - [class vodka::syscalls::SyscallContainer](#class-vodkasyscallssyscallcontainer)
 - [vodka::variables](#vodkavariables)
   - [enum class vodka::variables::VariableDatatype](#enum-class-vodkavariablesvariabledatatype)
@@ -48,6 +54,7 @@ vodka-lib is the static internal C++ library that powers the Vodka transcoder an
   - [class vodka::variables::VariableMetadata](#class-vodkavariablesvariablemetadata)
   - [class vodka::variables::VodintVariable](#class-vodkavariablesvodintvariable)
   - [class vodka::variables::VodecVariable](#class-vodkavariablesvodecvariable)
+  - [class vodka::variables::VodstrVariable](#class-vodkavariablesvodstrvariable)
   - [class vodka::variables::VodargVariable](#class-vodkavariablesvodargvariable)
   - [class vodka::variables::VariableContainer](#class-vodkavariablesvariablecontainer)
 - [vodka::analyser](#vodkaanalyser)
@@ -91,9 +98,12 @@ vodka-lib is the static internal C++ library that powers the Vodka transcoder an
   - [class vodka::library::FunctionCall](#class-vodkalibraryfunctioncall)
   - [vodka::library::kernel](#vodkalibrarykernel)
     - [class vodka::library::kernel::CallTreatement](#class-vodkalibrarykernelcalltreatement)
-- [vodka::instruction](#vodkainstruction)
-  - [class vodka::instruction::InstructionCall](#class-vodkainstructioninstructioncall)
-  - [class vodka::instruction::CallTreatement](#class-vodkainstructioncalltreatement)
+  - [vodka::library::conversions](#vodkalibraryconversions)
+    - [class vodka::library::conversions::CallTreatement](#class-vodkalibraryconversionscalltreatement)
+  - [vodka::library::vodstr](#vodkalibraryvodstr)
+    - [class vodka::library::vodstr::CallTreatement](#class-vodkalibraryvodstrcalltreatement)
+  - [vodka::library::math](#vodkalibrarymath)
+    - [class vodka::library::math::CallTreatement](#class-vodkalibrarymathcalltreatement)
 
 ## Main structure
 
@@ -106,7 +116,6 @@ vodka-lib is divided into several namespaces for ease of coding:
 - `vodka::json` : everything related to json export, used only inside by the Vodka transcoder
 - `vodka::utilities` : general utilities used for vodka language structure and logs, used both by the Vodka transcoder and vodka-lib
 - `vodka::library` : everything related to vodka code analysis for internal libraries function calls, used only inside by the Vodka transcoder
-- `vodka::instructions` : everything related to vodka code analysis for internal instructions calls, used only inside by the Vodka transcoder
 
 ## Constants datas
 
@@ -135,14 +144,6 @@ The list of native type that can appear in a variable declaration.
 ### `std::vector<std::string> vodka::InternalSyscalls`
 
 The list of all the syscalls implemented for this version of vodka-lib.
-
-### `std::vector<std::string> vodka::VodkaInstructions`
-
-The list of all the vodka instructions for this version of vodka-lib.
-
-### `std::map<std::string, std::vector<std::string>> vodka::ConversionsSyscalls`
-
-The map that indicate which vodka datatype can accept each conversion syscall
 
 ## Environnements variables
 
@@ -208,7 +209,7 @@ That class contain all the information necessary to raise an error.
 - `std::string error` : the actual error
 - `std::string file` : the .vod file from which the error come. Leave empty (by default) to not display any file
 - `std::vector<std::string> lines_content` : the content of each lines that need to be displayed. Leave empty (by default) to not display any line
-- `std::vector<int> lines` : the line(s) that caused the error. Leave empty (by default) to not display any line. **It should have the same lenght as lines_content**
+- `std::vector<int> lines` : the line(s) that caused the error. Leave empty (by default) to not display any line. **It should have the same length as lines_content**
 - `vodka::errors::SourcesStack source` : the source stack
 - `bool class_mode` : specifie if the error came from a class method or a function
 
@@ -233,7 +234,7 @@ That namespace is responsible for syscalls syntax generation.
 
 That class indicate which syscall is stored.
 
-**Possible values:** `PRINT`, `ADD`, `ASSIGN`, `FREE`, `INVERT`, `DUPLICATE`, `ABS`, `DIVMOD`, `TOINT`, `TODEC`, `MULINT`, `MULDEC`, `DIVIDE`
+**Possible values:** `PRINT`, `ADD`, `ASSIGN`, `FREE`, `INVERT`, `DUPLICATE`, `ABS`, `DIVMOD`, `TOINT`, `TODEC`, `MULINT`, `MULDEC`, `DIVIDE`, `LENGTH`, `CONCAT`,`SUBSTRING`, `CHARAT`, `REVERSE`, `ESCAPE`, `INSERT`, `FIND`
 
 ---
 
@@ -247,8 +248,8 @@ Convert `vodka::syscalls::SyscallsNames` object to string.
 This is the class for the `PRINT` syscall.
 
 **Attributes that must be set after declaration:**
-- `std::vector<std::string> argument_uid` : all the variables UID that should be printed
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string argument_uid` : the UID of the variable that should be printed
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -257,9 +258,10 @@ This is the class for the `PRINT` syscall.
 This is the class for the `ADD` syscall.
 
 **Attributes that must be set after declaration:**
-- `std::vector<std::string> argument_uid` : all the variables UID that should be added together
-- `std::string output_uid` : the variable UID for the output of the addition
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string first_uid` : the UID of the variable for the first term of the addition
+- `std::string second_uid` : the UID of the variable for the second term of the addition
+- `std::string output_uid` : the UID of the variable for the output of the addition
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -269,8 +271,8 @@ This is the class for the `ASSIGN` syscall.
 
 **Attributes that must be set after declaration:**
 - `std::string value` : the value to put inside the variable
-- `std::string output_uid` : the variable UID for the output of the assignation
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string output_uid` : the UID of the variable for the output of the assignation
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -279,8 +281,8 @@ This is the class for the `ASSIGN` syscall.
 This is the class for the `FREE` syscall.
 
 **Attributes that must be set after declaration:**
-- `std::vector<std::string> argument_uid` : all the variables UID to erase
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string argument_uid` : the UID of the variable to erase
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -289,8 +291,9 @@ This is the class for the `FREE` syscall.
 This is the class for the `INVERT` syscall.
 
 **Attributes that must be set after declaration:**
-- `std::string uid` : the variable UID that should have his sign reversed
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string source_uid` : the UID of the variable that should have his sign reversed
+- `std::string output_uid` : the UID of the variable that should receive the output
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -301,7 +304,7 @@ This is the class for the `DUPLICATE` syscall.
 **Attributes that must be set after declaration:**
 - `std::string source_uid` : the UID of the source variable for the duplication
 - `std::string output_uid` : the UID of the output variable for the duplication
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -310,8 +313,9 @@ This is the class for the `DUPLICATE` syscall.
 This is the class for the `ABS` syscall.
 
 **Attributes that must be set after declaration:**
-- `std::string uid` : the UID of the variable that should be turn into his absolute value
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string source_uid` : the UID of the variable that should be transformed into his absolute value
+- `std::string output_uid` : the UID of the variable that should receive the output
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -324,7 +328,7 @@ This is the class for the `DIVMOD` syscall.
 - `std::string rest_uid` : the UID of the variable that should receive the rest of the euclidian division
 - `std::string divisor_uid` : the UID of the variable that contain the divisor
 - `std::string dividend_uid` : the UID of the variable that contain the dividend
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -333,9 +337,9 @@ This is the class for the `DIVMOD` syscall.
 This is the class for the `TOINT` syscall.
 
 **Attributes that must be set after declaration:**
-- `std::string uid_source` : the UID of the variable that should be converted into integer number syntax
-- `std::string uid_output` : the UID of the variable that should receive the converted value
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string source_uid` : the UID of the variable that should be converted into integer number syntax
+- `std::string output_uid` : the UID of the variable that should receive the converted value
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -344,9 +348,9 @@ This is the class for the `TOINT` syscall.
 This is the class for the `TODEC` syscall.
 
 **Attributes that must be set after declaration:**
-- `std::string uid_source` : the UID of the variable that should be converted into decimal number syntax
-- `std::string uid_output` : the UID of the variable that should receive the converted value
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string source_uid` : the UID of the variable that should be converted into decimal number syntax
+- `std::string output_uid` : the UID of the variable that should receive the converted value
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -359,7 +363,7 @@ This is the class for the `MULDEC` syscall.
 - `std::string first_uid` : the UID of the variable that contain the first term of the multiplication
 - `std::string second_uid` : the UID of the variable that contain the second term of the multiplication
 - `std::string precision_uid` : the UID of the variable that contain the precision of the multiplication
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -371,7 +375,7 @@ This is the class for the `MULINT` syscall.
 - `std::string output_uid` : the UID of the variable that should receive the output of the multiplication
 - `std::string first_uid` : the UID of the variable that contain the first term of the multiplication
 - `std::string second_uid` : the UID of the variable that contain the second term of the multiplication
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -384,7 +388,102 @@ This is the class for the `DIVIDE` syscall.
 - `std::string first_uid` : the UID of the variable that contain the first term of the division
 - `std::string second_uid` : the UID of the variable that contain the second term of the division
 - `std::string precision_uid` : the UID of the variable that contain the precision of the division
-- `string name` : the name of the syscall. **Shouldn't be modified.**
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
+
+---
+
+### `class vodka::syscalls::LENGTH`
+
+This is the class for the `LENGTH` syscall.
+
+**Attributes that must be set after declaration:**
+- `std::string output_uid` : the UID of the output variable
+- `std::string source_uid` : the UID of the source variable
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
+
+---
+
+### `class vodka::syscalls::CONCAT`
+
+This is the class for the `CONCAT` syscall.
+
+**Attributes that must be set after declaration:**
+- `std::string output_uid` : the UID of the output variable
+- `std::string first_uid` : the UID of the first variable
+- `std::string second_uid` : the UID of the second variable
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
+
+---
+
+### `class vodka::syscalls::SUBSTRING`
+
+This is the class for the `SUBSTRING` syscall.
+
+**Attributes that must be set after declaration:**
+- `std::string output_uid` : the UID of the output variable
+- `std::string source_uid` : the UID of the source variable
+- `std::string start_index_uid` : the UID of the variable that contain the starting index of the substring
+- `std::string length_output_uid` : the UID of the variable that contain the length of the substring
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
+
+---
+
+### `class vodka::syscalls::CHARAT`
+
+This is the class for the `CHARAT` syscall.
+
+**Attributes that must be set after declaration:**
+- `std::string output_uid` : the UID of the output variable
+- `std::string source_uid` : the UID of the source variable
+- `std::string char_uid` : the UID of the variable that contain the index of the character
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
+
+---
+
+### `class vodka::syscalls::REVERSE`
+
+This is the class for the `REVERSE` syscall.
+
+**Attributes that must be set after declaration:**
+- `std::string output_uid` : the UID of the output variable
+- `std::string source_uid` : the UID of the source variable
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
+
+---
+
+### `class vodka::syscalls::ESCAPE`
+
+This is the class for the `ESCAPE` syscall.
+
+**Attributes that must be set after declaration:**
+- `std::string output_uid` : the UID of the output variable
+- `std::string source_uid` : the UID of the source variable
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
+
+---
+
+### `class vodka::syscalls::INSERT`
+
+This is the class for the `INSERT` syscall.
+
+**Attributes that must be set after declaration:**
+- `std::string output_uid` : the UID of the output variable
+- `std::string source_uid` : the UID of the source variable
+- `std::string index_uid` : the UID of the variable that contain the index where the string will be inserted
+- `std::string string_to_insert` : the UID of the variable to insert
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
+
+---
+
+### `class vodka::syscalls::FIND`
+
+This is the class for the `FIND` syscall.
+
+**Attributes that must be set after declaration:**
+- `std::string output_uid` : the UID of the output variable
+- `std::string source_uid` : the UID of the source variable
+- `std::string char_uid` : the UID of the variable that contain the variable to search
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
 
 ---
 
@@ -409,6 +508,14 @@ This is the class that will generate the syntax for each syscall.
 - `MULINT mulint_element` : if `thing` is `vodka::syscalls::SyscallsNames::MULINT`
 - `MULDEC muldec_element` : if `thing` is `vodka::syscalls::SyscallsNames::MULDEC`
 - `DIVIDE divide_element` : if `thing` is `vodka::syscalls::SyscallsNames::DIVIDE`
+- `LENGHT lenght_element` : if `thing` is `vodka::syscalls::SyscallsNames::LENGHT`
+- `CONCAT concat_element` : if `thing` is `vodka::syscalls::SyscallsNames::CONCAT`
+- `SUBSTRING substring_element` : if `thing` is `vodka::syscalls::SyscallsNames::SUBSTRING`
+- `CHARAT charat_element` : if `thing` is `vodka::syscalls::SyscallsNames::CHARAT`
+- `REVERSE reverse_element` : if `thing` is `vodka::syscalls::SyscallsNames::REVERSE`
+- `ESCAPE escape_element` : if `thing` is `vodka::syscalls::SyscallsNames::ESCAPE`
+- `INSERT insert_element` : if `thing` is `vodka::syscalls::SyscallsNames::INSERT`
+- `FIND find_element` : if `thing` is `vodka::syscalls::SyscallsNames::FIND`
 
 **Methods:**
 - `string syntax()` : generate the line to be outputed, according to the value inside `thing`
@@ -438,7 +545,7 @@ Convert `vodka::variables::VariableDatatype` object to string.
 This is the class responsible for storing the metadatas common to all variables and datatypes.
 
 **Attributes that must be set after declaration:**
-- `std::string name` : the name of the variable that will be used to identify the variable inside the vodka code
+- `std::std::string name` : the name of the variable that will be used to identify the variable inside the vodka code
 - `std::string uuid` : the UID of the variable that will be used to identify the variable inside the kernel code
 - `bool is_vodka_constant` : define if the variable is a vodka constant
 - `bool in_data_section` : define if the variable should be written inside the `data` section
@@ -571,7 +678,7 @@ This is the class that will parse and convert a variable declaration into a usab
 - `vodka::variables::VariableContainer duplication_source_variable` : the source of the duplication. **Should only be specified if `datatype` is `vodka`, after the call of `parser` and `check_type_value`**
 
 **Attributes that shouldn't be modified by user:**
-- `std::string name` : the name of the variable
+- `std::std::string name` : the name of the variable
 - `std::string datatype` : the datatype of the variable
 - `std::string value` : the value of the variable
 - `bool is_kernel_constant` : if the variable is a kernel constant
@@ -686,7 +793,7 @@ That namespace is responsible for translating the vodka code input into a JSON s
 This class make the output for a vodka instruction (with or without library).
 
 **Arguments that should be set just after declaration:**
-- `std::string name` : the name of the instruction
+- `std::std::string name` : the name of the instruction
 - `std::string source` : the source of the instruction. **For the moment, all available source is `<builtin>`, signifying that the instruction isn't from a plugin.**
 - `std::string library` : the library from which the instruction come from. If the instruction is a cell defined into the source file or a instruction managed by the Vodka transcoder, this attribute should be set as `<no_library>`
 - `std::string uid` : the UID of the line
@@ -745,7 +852,7 @@ This class make the output for a line.
 This class make the output for an entire cell.
 
 **Arguments that should be set just after declaration:**
-- `std::string name` : the name of the cell
+- `std::std::string name` : the name of the cell
 - `std::string uid` : the UID of the cell
 - `vodka::json::vodka::VodkaSymbol start` : the symbol that start the cell (also contain the argument of the cell)
 - `vodka::json::vodka::VodkaSymbol end` : the symbol that end the cell
@@ -783,7 +890,7 @@ This is the structure responsible for storing a cell.
 
 **Attributes:**
 - `std::vector<std::string> content` : the list of each line of the cell
-- `std::string name` : the name of the cell
+- `std::std::string name` : the name of the cell
 - `std::vector<std::string> args` : the argument(s) of the cell
 - `std::vector<std::string> outs` : the output(s) of the cell
 - `vodka::utilities::symbol start` : the starting symbol of the cell
@@ -865,14 +972,14 @@ debuglog(">hello",5,"main",true,"a","file.vod",true);
 
 ---
 
-#### `void vodka::utilities::output::var_warning(std::string namevar, std::string typevar, std::string namecell, std::string line)`
+#### `void vodka::utilities::output::var_warning(std::std::string namevar, std::string typevar, std::std::string namecell, std::string line)`
 
 This is the function used to print unesed variables warning.
 
 **Arguments:**
-- `std::string namevar` : the name of the variable
+- `std::std::string namevar` : the name of the variable
 - `std::string typevar` : the datatype of the variable
-- `std::string namecell` : the name of the cell where of the variable is declared
+- `std::std::string namecell` : the name of the cell where of the variable is declared
 - `std::string line` : the line number where the variable is declared
 - `bool var_warning_enabled` : if the user enabled warnings about unused variables.
 - `std::string verbose` : could be `a` for all, `r` for reduced or `e` for error only. This is mainly for deciding how line break should be inserted in the terminal.
@@ -955,7 +1062,7 @@ This class store all the context needed to transcode an internal library functio
 
 ### `vodka::library::kernel`
 
-This namespace is responsible for the transcoding of internal libraries function call.
+This namespace is responsible for the transcoding of the kernel internal libraries function call.
 
 ---
 
@@ -967,7 +1074,7 @@ This is the class that transcode kernel internal library function call into a li
 - `vodka::library::FunctionCall function_call` : the function call with all his context
 
 **Arguments that indicate the output (only set after call_treatement):**
-- `std::vector<vodka::syscalls::SyscallContainer> syscall_output` : the list of syscall object that should be added in the kernel code output
+- `std::vector<vodka::syscalls::SyscallContainer> syscalls_output` : the list of syscall object that should be added in the kernel code output
 - `bool var_flag` : indicate if the main program should replace his list and map of existing variables with the one into the function call object that was modified
 
 **Arguments that should be set by method:**
@@ -976,42 +1083,77 @@ This is the class that transcode kernel internal library function call into a li
 **Method:**
 - `bool call_treatement(SourcesStack lclstack)` : automatically choose the expected call_treatement for the function call and transcode it into syscall. The output should be put inside the `checked` attribute. **This method raise his own error so you don't need to. It will return `false` if `call.type_analyser.checked` isn't `true` or `call.type_analyser.type` isn't `internal_library`.**
 
-## `vodka::instruction`
+---
 
-That namespace is responsible for the transcoding of vodka instructions call.
+### `vodka::library::conversions`
+
+This namespace is responsible for the transcoding of the conversions internal libraries function call.
 
 ---
 
-### `class vodka::instruction::InstructionCall`
+#### `class vodka::library::conversions::CallTreatement`
 
-This class store all the context needed to transcode a vodka instructions call.
-
-**Arguments that should be set just after declaration:**
-- `vodka::analyser::LineTypeChecker line_checked` : the line to analyse
-- `std::vector<std::string> variableslist_context` : the list of variables already existing before this instruction
-- `vodka::utilities::cellule cell_context` : the cell structure from which the instruction call came from
-- `int iteration_number_context` : since the analyse of all the lines in the cell should be done in a `for` loop, we need the iterator of this loop to determine the line number.
-- `std::string file_name_context` : the name of the file being transcoded
-- `std::string verbose_context` : the verbose mode selected by the user, `a`, `r` or `e`. Choose `e` for normal output mode.
-- `int main_logstep_context` : the step of the main process of transcoding. Put any number if `verbose_context` is `e`.
-- `std::string last_logstep_context` : the number of step in the main process. Put any string if `verbose_context` is `e`.
-- `std::map<std::string,vodka::variables::VariableContainer> variablesdict_context` : the map of all the variables already existing before this instruction
-
----
-
-### `class vodka::instruction::CallTreatement`
-
-This is the class that transcode vodka instruction call into a list of usable `vodka::syscalls::SyscallContainer`.
+This is the class that transcode conversions internal library function call into a list of usable `vodka::syscalls::SyscallContainer`.
 
 **Arguments that should be set just after declaration:**
-- `vodka::library::instruction_call instruction_call` : the instruction call with all his context
+- `vodka::library::FunctionCall function_call` : the function call with all his context
 
 **Arguments that indicate the output (only set after call_treatement):**
-- `std::vector<vodka::syscalls::SyscallContainer> syscall_output` : the list of syscall object that should be added in the kernel code output
-- `bool var_flag` : indicate if the main program should replace his list and map of existing variables with the one into the instruction call object that was modified
+- `std::vector<vodka::syscalls::SyscallContainer> syscalls_output` : the list of syscall object that should be added in the kernel code output
+- `bool var_flag` : indicate if the main program should replace his list and map of existing variables with the one into the function call object that was modified
 
 **Arguments that should be set by method:**
 - `bool checked` : should be set with the value returned by the `call_treatement` method (need to be set manually in the main program). Defaulted to `false` but if the value doesn't change after a call on `call_treatement`, the line doesn't pass the test and can't be consideer valid.
 
 **Method:**
-- `bool call_treatement(SourcesStack lclstack)` : automatically choose the expected call_treatement for the instruction call and transcode it into syscall. The output should be put inside the `checked` attribute. **This method raise his own error so you don't need to. It will return `false` if `call.type_analyser.checked` isn't `true` or `call.type_analyser.type` isn't `call_treatement`.**
+- `bool call_treatement(SourcesStack lclstack)` : automatically choose the expected call_treatement for the function call and transcode it into syscall. The output should be put inside the `checked` attribute. **This method raise his own error so you don't need to. It will return `false` if `call.type_analyser.checked` isn't `true` or `call.type_analyser.type` isn't `internal_library`.**
+
+---
+
+### `vodka::library::vodstr`
+
+This namespace is responsible for the transcoding of the vodstr internal libraries function call.
+
+---
+
+#### `class vodka::library::vodstr::CallTreatement`
+
+This is the class that transcode vodstr internal library function call into a list of usable `vodka::syscalls::SyscallContainer`.
+
+**Arguments that should be set just after declaration:**
+- `vodka::library::FunctionCall function_call` : the function call with all his context
+
+**Arguments that indicate the output (only set after call_treatement):**
+- `std::vector<vodka::syscalls::SyscallContainer> syscalls_output` : the list of syscall object that should be added in the kernel code output
+- `bool var_flag` : indicate if the main program should replace his list and map of existing variables with the one into the function call object that was modified
+
+**Arguments that should be set by method:**
+- `bool checked` : should be set with the value returned by the `call_treatement` method (need to be set manually in the main program). Defaulted to `false` but if the value doesn't change after a call on `call_treatement`, the line doesn't pass the test and can't be consideer valid.
+
+**Method:**
+- `bool call_treatement(SourcesStack lclstack)` : automatically choose the expected call_treatement for the function call and transcode it into syscall. The output should be put inside the `checked` attribute. **This method raise his own error so you don't need to. It will return `false` if `call.type_analyser.checked` isn't `true` or `call.type_analyser.type` isn't `internal_library`.**
+
+---
+
+### `vodka::library::math`
+
+This namespace is responsible for the transcoding of the math internal libraries function call.
+
+---
+
+#### `class vodka::library::math::CallTreatement`
+
+This is the class that transcode math internal library function call into a list of usable `vodka::syscalls::SyscallContainer`.
+
+**Arguments that should be set just after declaration:**
+- `vodka::library::FunctionCall function_call` : the function call with all his context
+
+**Arguments that indicate the output (only set after call_treatement):**
+- `std::vector<vodka::syscalls::SyscallContainer> syscalls_output` : the list of syscall object that should be added in the kernel code output
+- `bool var_flag` : indicate if the main program should replace his list and map of existing variables with the one into the function call object that was modified
+
+**Arguments that should be set by method:**
+- `bool checked` : should be set with the value returned by the `call_treatement` method (need to be set manually in the main program). Defaulted to `false` but if the value doesn't change after a call on `call_treatement`, the line doesn't pass the test and can't be consideer valid.
+
+**Method:**
+- `bool call_treatement(SourcesStack lclstack)` : automatically choose the expected call_treatement for the function call and transcode it into syscall. The output should be put inside the `checked` attribute. **This method raise his own error so you don't need to. It will return `false` if `call.type_analyser.checked` isn't `true` or `call.type_analyser.type` isn't `internal_library`.**

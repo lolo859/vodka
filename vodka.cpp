@@ -590,7 +590,7 @@ int main (int argc,char* argv[]) {
         case '!':
             var_warning_enabled=false;
         case '1':
-            cout<<"Vodka transcoder version 0.4 beta 2"<<endl;
+            cout<<"Vodka transcoder version 0.4 beta 3"<<endl;
             cout<<"vodka-lib version "+vodka::LibraryVersion<<endl;
             cout<<"Json export format version 4"<<endl;
             cout<<"vodka-lib Json namespace version "+vodka::JsonVersion<<endl;
@@ -815,45 +815,81 @@ int main (int argc,char* argv[]) {
                 if (engine.checked==false) {
                     return -1;
                 } else {
-                    instructions_main.insert(instructions_main.end(),engine.syscall_output.begin(),engine.syscall_output.end());
+                    instructions_main.insert(instructions_main.end(),engine.syscalls_output.begin(),engine.syscalls_output.end());
                 }
                 if (engine.var_flag==true) {
                     main_variableslist=engine.function_call.variableslist_context;
                     main_variablesdict=engine.function_call.variablesdict_context;
                 }
-            }
-        } else if (type_analyser.type=="vodka_instruction") {
-            auto args=vodka::analyser::get_arguments(line);
-            for (auto arg:args) {
-                try {
-                    main_vars_used.at(arg)={"t",main_vars_used.at(arg)[1]};
-                } catch (const std::out_of_range& e) {
-                    //* Error is raised later
+            } else if (type_analyser.library_name=="conversions") {
+                vodka::library::FunctionCall fcall;
+                fcall.verbose_context=verbose;
+                fcall.main_logstep_context=log_main_step;
+                fcall.last_logstep_context=last;
+                fcall.variableslist_context=main_variableslist;
+                fcall.cell_context=maincell;
+                fcall.iteration_number_context=i;
+                fcall.file_name_context=file_source;
+                fcall.variablesdict_context=main_variablesdict;
+                fcall.line_checked=type_analyser;
+                vodka::library::conversions::CallTreatement engine;
+                engine.function_call=fcall;
+                engine.checked=engine.call_treatement(lclstack);
+                if (engine.checked==false) {
+                    return -1;
+                } else {
+                    instructions_main.insert(instructions_main.end(),engine.syscalls_output.begin(),engine.syscalls_output.end());
                 }
-            }
-            vodka::instructions::InstructionCall icall;
-            icall.verbose_context=verbose;
-            icall.main_logstep_context=log_main_step;
-            icall.last_logstep_context=last;
-            icall.variableslist_context=main_variableslist;
-            icall.cell_context=maincell;
-            icall.iteration_number_context=i;
-            icall.file_name_context=file_source;
-            icall.variablesdict_context=main_variablesdict;
-            icall.line_checked=type_analyser;
-            vodka::instructions::CallTreatement engine;
-            engine.instruction_call=icall;
-            engine.checked=engine.call_treatement(lclstack);
-            if (engine.checked==false) {
-                return -1;
-            } else {
-                for (auto a:engine.syscalls_output) {
-                    instructions_main.push_back(a);
+                if (engine.var_flag==true) {
+                    main_variableslist=engine.function_call.variableslist_context;
+                    main_variablesdict=engine.function_call.variablesdict_context;
                 }
-            }
-            if (engine.var_flag==true) {
-                main_variablesdict=engine.instruction_call.variablesdict_context;
-                main_variableslist=engine.instruction_call.variableslist_context;
+            } else if (type_analyser.library_name=="math") {
+                vodka::library::FunctionCall fcall;
+                fcall.verbose_context=verbose;
+                fcall.main_logstep_context=log_main_step;
+                fcall.last_logstep_context=last;
+                fcall.variableslist_context=main_variableslist;
+                fcall.cell_context=maincell;
+                fcall.iteration_number_context=i;
+                fcall.file_name_context=file_source;
+                fcall.variablesdict_context=main_variablesdict;
+                fcall.line_checked=type_analyser;
+                vodka::library::math::CallTreatement engine;
+                engine.function_call=fcall;
+                engine.checked=engine.call_treatement(lclstack);
+                if (engine.checked==false) {
+                    return -1;
+                } else {
+                    instructions_main.insert(instructions_main.end(),engine.syscalls_output.begin(),engine.syscalls_output.end());
+                }
+                if (engine.var_flag==true) {
+                    main_variableslist=engine.function_call.variableslist_context;
+                    main_variablesdict=engine.function_call.variablesdict_context;
+                }
+            } else if (type_analyser.library_name=="vodstr") {
+                vodka::library::FunctionCall fcall;
+                fcall.verbose_context=verbose;
+                fcall.main_logstep_context=log_main_step;
+                fcall.last_logstep_context=last;
+                fcall.variableslist_context=main_variableslist;
+                fcall.cell_context=maincell;
+                fcall.iteration_number_context=i;
+                fcall.file_name_context=file_source;
+                fcall.variablesdict_context=main_variablesdict;
+                fcall.line_checked=type_analyser;
+                vodka::library::vodstr::CallTreatement engine;
+                engine.function_call=fcall;
+                engine.checked=engine.call_treatement(lclstack);
+                if (engine.checked==false) {
+                    return -1;
+                } else {
+                    instructions_main.insert(instructions_main.end(),engine.syscalls_output.begin(),engine.syscalls_output.end());
+                }
+                if (engine.var_flag==true) {
+                    main_variableslist=engine.function_call.variableslist_context;
+                    main_variablesdict=engine.function_call.variablesdict_context;
+                }
             }
         } else {
             raise(ErrorContainer("vodka.error.function.unknow : Unknow function.",file_source,{line},{maincell.start.line+(int)i+1},lclstack));
@@ -1093,7 +1129,6 @@ int main (int argc,char* argv[]) {
             json_ints_v["symbols"][to_string(i+1)+":"+to_string(genuid())]=symb.syntax();
         }
         output::log("Converting cells : ",log_main_step,last,1,{2},{2});
-        vector<string> vodkaints=vodka::VodkaInstructions;
         for (int i=0;i<idencell.size();++i) {
             output::log("Converting cell "+cells[i].name+".",log_main_step,last,2,{2,i+1},{2,cells.size()});
             auto cellcontent=cells[i].content;
@@ -1133,9 +1168,21 @@ int main (int argc,char* argv[]) {
                     linecont.thing="instruction";
                     linecont.instruction_element=instr;
                     idencell[i].lines_content.push_back(linecont);
-                } else if (find(vodkaints.begin(),vodkaints.end(),string_utilities::split(a," ")[0])!=vodkaints.end()) {
+                } else if (a.substr(0,11)=="conversions") {
                     vodka::json::vodka::VodkaInstruction instr;
-                    instr.library="<no_library>";
+                    instr.library="conversions";
+                    instr.uid=to_string(genuid());
+                    instr.name=string_utilities::split(a," ")[0];
+                    instr.source="<builtin>";
+                    auto eles=string_utilities::split(a," ");
+                    instr.args=vector<string>(eles.begin()+1,eles.end());
+                    vodka::json::vodka::VodkaLine linecont;
+                    linecont.thing="instruction";
+                    linecont.instruction_element=instr;
+                    idencell[i].lines_content.push_back(linecont);
+                } else if (a.substr(0,4)=="math") {
+                    vodka::json::vodka::VodkaInstruction instr;
+                    instr.library="math";
                     instr.uid=to_string(genuid());
                     instr.name=string_utilities::split(a," ")[0];
                     instr.source="<builtin>";

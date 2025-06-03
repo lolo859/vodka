@@ -10,6 +10,9 @@ using namespace vodka::utilities;
 bool vodka::type::vodint::check_value(string value,vodka::analyser::LineSyntaxChecker context,SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
+    if (value=="null") {
+        return true;
+    }
     if (value.empty() || value=="-") {
         raise(ErrorContainer("vodka.error.vodint.invalid_value : Invalid value for vodint : "+value,context.file,{context.content},{context.line_number},srclclstack));
         return false;
@@ -31,6 +34,9 @@ bool vodka::type::vodint::check_value(string value,vodka::analyser::LineSyntaxCh
 string vodka::type::vodint::remove_zero(string value,SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
+    if (value=="null") {
+        return value;
+    }
     bool reached=false;
     string out;
     bool negative;
@@ -63,6 +69,9 @@ string vodka::type::vodint::remove_zero(string value,SourcesStack lclstack) {
 bool vodka::type::vodec::check_value(string value,vodka::analyser::LineSyntaxChecker context,SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
+    if (value=="null") {
+        return true;
+    }
     if (value.empty() || value=="-") {
         raise(ErrorContainer("vodka.error.vodec.invalid_value : Invalid value for vodec : "+value,context.file,{context.content},{context.line_number},srclclstack));
         return false;
@@ -99,6 +108,9 @@ bool vodka::type::vodec::check_value(string value,vodka::analyser::LineSyntaxChe
 string vodka::type::vodec::remove_zero(string value,SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
+    if (value=="null") {
+        return value;
+    }
     string out;
     bool negative;
     string newvalue;
