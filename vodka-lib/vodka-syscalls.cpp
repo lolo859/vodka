@@ -46,6 +46,8 @@ string vodka::syscalls::SyscallContainer::syntax() {
         return insert_element.name+" "+insert_element.output_uid+" "+insert_element.source_uid+" "+insert_element.index_uid+" "+insert_element.string_to_insert_uid;
     } else if (thing==vodka::syscalls::SyscallsNames::FIND) {
         return find_element.name+" "+find_element.output_uid+" "+find_element.source_uid+" "+find_element.char_uid;
+    } else if (thing==vodka::syscalls::SyscallsNames::GETMEM) {
+        return getmem_element.name+" "+getmem_element.output_uid+" "+getmem_element.source_uid;
     } else {
         return "error";
     }
@@ -74,6 +76,7 @@ string vodka::syscalls::syscall_to_string(SyscallsNames syscall) {
         case SyscallsNames::ESCAPE:return "ESCAPE";
         case SyscallsNames::INSERT:return "INSERT";
         case SyscallsNames::FIND:return "FIND";
+        case SyscallsNames::GETMEM:return "GETMEM";
         default:return "Unknown";
     }
 }

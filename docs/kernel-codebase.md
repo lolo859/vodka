@@ -32,6 +32,7 @@ Kernel code is the low-level, intermediate language designed to be the final tar
   - [ESCAPE](#escape)
   - [INSERT](#insert)
   - [FIND](#find)
+  - [GETMEM](#GETMEM)
 
 ## Sections
 
@@ -81,7 +82,7 @@ ASSIGN <uid> <value>
 
 ## Instructions
 
-Instructions (or syscalls) are always written in capital letter and can't be added outside of section. All arguments are variables UID except for the value in the `ASSIGN` instruction. All arguments are separated by spaces. Here is the list of instructions:
+Instructions (or syscalls) are always written in capital letter and can't be added outside of section. All arguments are variables UID except for the value in the `ASSIGN` instruction. All arguments are separated by spaces. Here is the list of all the instructions:
 - [PRINT](#print)
 - [ADD](#add)
 - [ASSIGN](#assign)
@@ -231,3 +232,9 @@ Syntax: `INSERT <output_uid> <source_uid> <index_uid> <string_to_insert_uid>`
 The `FIND` instruction find the first occurence of a single character (UTF-8 is supported).
 
 Syntax: `FIND <output_uid> <source_uid> <char_uid>`
+
+### GETMEM
+
+The `GETMEM` return the amount of bits occupied by a variable.
+
+Syntax: `GETMEM <output_uid> <input_uid>`

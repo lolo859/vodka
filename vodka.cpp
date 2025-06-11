@@ -21,9 +21,13 @@ bool compiled_with_gpp=false;
 #include <chrono>
 #include <boost/hash2/sha3.hpp>
 #include <boost/version.hpp>
+#include <random>
 #include <cstdlib>
 #include "vodka-lib/vodka-lib.h"
 #include "dependencies/json.hpp"
+extern "C" {
+    #include "dependencies/xxhash.h"
+};
 //* Some necessary functions
 string hash_then_encode(string origin) {
     boost::hash2::sha3_512 hasher;
@@ -63,6 +67,9 @@ using namespace std;
 using namespace vodka::utilities;
 using namespace vodka::errors;
 //* Some variables
+//* Random things
+random_device rd;
+mt19937_64 gen(rd());
 //* Variables for compilation and options
 string verbose="e";
 bool debug_mode=false;
@@ -344,13 +351,13 @@ bool detect_cells(SourcesStack srclclstack) {
                 if (temp.name=="main") {
                     maincell=temp;
                     for (auto a:maincell.args) {
-                        auto uid=to_string(genuid());
+                        auto uid=genvyid();
                         vodka::variables::VariableMetadata argsinfo;
                         argsinfo.algo_dependant=true;
                         argsinfo.is_vodka_constant=false;
                         argsinfo.is_kernel_constant=false;
                         argsinfo.in_data_section=false;
-                        argsinfo.uuid=to_string(genuid());
+                        argsinfo.uuid=genvyid();
                         argsinfo.name=a;
                         vodka::variables::VodargVariable argscont;
                         vodka::variables::VariableContainer varcont;
@@ -442,14 +449,27 @@ bool code_pre_treatement(bool replace,SourcesStack srclclstack) {
         localline.file=file_source;
         localline.content=maincell.content[i];
         auto direct_declared_data=string_utilities::split(maincell.content[i]," ");
-        if (direct_declared_data.size()>2) {
+        if (direct_declared_data.size()>=2) {
             if (direct_declared_data[0]!="vodka") {
-                direct_declared_data.erase(direct_declared_data.begin(),direct_declared_data.begin()+1);
+                bool skip=false;
+                if (vodka::IndexStartDatatypeReplacement.at(direct_declared_data[0])!=-1) {
+                    direct_declared_data.erase(direct_declared_data.begin(),direct_declared_data.begin()+vodka::IndexStartDatatypeReplacement.at(direct_declared_data[0]));
+                } else {
+                    skip=true;
+                }
                 for (auto arg:direct_declared_data) {
                     if (arg.substr(0,1)=="#" && find(directs_data.begin(),directs_data.end(),arg)==directs_data.end()) {
+                        if (skip==true) {
+                            raise(ErrorContainer("vodka.error.line.datatype_replacement.instruction_ineligible : This instruction can't be pre-processed for datatypes replacement process",file_source,{maincell.content[i]},{maincell.start.line+i+1},lclstack));
+                            return false;
+                        }
                         if (vodka::type::vodint::check_value(arg.substr(1,arg.size()-1),localline,lclstack)) {
                             vodka::variables::VodintVariable intele;
                             intele.value=vodka::type::vodint::remove_zero(arg.substr(1,arg.size()-1));
+                            if (intele.value=="null") {
+                                raise(ErrorContainer("vodka.error.line.datatype_replacement.forbidden_value : Values declared inside function can't be null",file_source,{maincell.content[i]},{maincell.start.line+i+1},lclstack));
+                                return false;
+                            }
                             vodka::variables::VariableContainer contele;
                             vodka::variables::VariableMetadata varinfo;
                             varinfo.is_vodka_constant=true;
@@ -457,7 +477,7 @@ bool code_pre_treatement(bool replace,SourcesStack srclclstack) {
                             varinfo.in_data_section=true;
                             varinfo.algo_dependant=false;
                             varinfo.is_kernel_constant=true;
-                            varinfo.uuid=to_string(vodka::utilities::genuid());
+                            varinfo.uuid=vodka::utilities::genvyid();
                             contele.variable_metadata=varinfo;
                             contele.vodint_element=intele;
                             contele.thing=vodka::variables::VariableDatatype::vodint;
@@ -468,16 +488,24 @@ bool code_pre_treatement(bool replace,SourcesStack srclclstack) {
                             return false;
                         }
                     } else if (arg.substr(0,1)=="%" && find(directs_data.begin(),directs_data.end(),arg)==directs_data.end()) {
+                        if (skip==true) {
+                            raise(ErrorContainer("vodka.error.line.datatype_replacement.instruction_ineligible : This instruction can't be pre-processed for datatypes replacement process",file_source,{maincell.content[i]},{maincell.start.line+i+1},lclstack));
+                            return false;
+                        }
                         if (vodka::type::vodec::check_value(arg.substr(1,arg.size()-1),localline,lclstack)) {
                             vodka::variables::VodecVariable decele;
                             decele.value=vodka::type::vodec::remove_zero(arg.substr(1,arg.size()-1));
+                            if (decele.value=="null") {
+                                raise(ErrorContainer("vodka.error.line.datatype_replacement.forbidden_value : Values declared inside function can't be null",file_source,{maincell.content[i]},{maincell.start.line+i+1},lclstack));
+                                return false;
+                            }
                             vodka::variables::VariableContainer contele;
                             vodka::variables::VariableMetadata varinfo;
                             varinfo.algo_dependant=false;
                             varinfo.is_vodka_constant=true;
                             varinfo.in_data_section=true;
                             varinfo.is_kernel_constant=true;
-                            varinfo.uuid=to_string(vodka::utilities::genuid());
+                            varinfo.uuid=vodka::utilities::genvyid();
                             varinfo.name=arg;
                             contele.variable_metadata=varinfo;
                             contele.vodec_element=decele;
@@ -502,19 +530,32 @@ bool code_pre_treatement(bool replace,SourcesStack srclclstack) {
             auto direct_declared_data=string_utilities::split(cell.content[i]," ");
             if (direct_declared_data.size()>2) {
                 if (direct_declared_data[0]!="vodka") {
-                    direct_declared_data.erase(direct_declared_data.begin(),direct_declared_data.begin()+1);
+                    bool skip=false;
+                    if (vodka::IndexStartDatatypeReplacement.at(direct_declared_data[0])!=-1) {
+                        direct_declared_data.erase(direct_declared_data.begin(),direct_declared_data.begin()+vodka::IndexStartDatatypeReplacement.at(direct_declared_data[0]));
+                    } else {
+                        skip=true;
+                    }
                     for (auto arg:direct_declared_data) {
                         if (arg.substr(0,1)=="#" && find(directs_data.begin(),directs_data.end(),arg)==directs_data.end()) {
+                            if (skip==true) {
+                                raise(ErrorContainer("vodka.error.line.datatype_replacement.instruction_ineligible : This instruction can't be pre-processed for datatypes replacement process",file_source,{maincell.content[i]},{maincell.start.line+i+1},lclstack));
+                                return false;
+                            }
                             if (vodka::type::vodint::check_value(arg.substr(1,arg.size()-1),localline,lclstack)) {
                                 vodka::variables::VodintVariable intele;
                                 intele.value=vodka::type::vodint::remove_zero(arg.substr(1,arg.size()-1));
+                                if (intele.value=="null") {
+                                    raise(ErrorContainer("vodka.error.line.datatype_replacement.forbidden_value : Values declared inside function can't be null",file_source,{maincell.content[i]},{maincell.start.line+i+1},lclstack));
+                                    return false;
+                                }
                                 vodka::variables::VariableContainer contele;
                                 vodka::variables::VariableMetadata varinfo;
                                 varinfo.algo_dependant=false;
                                 varinfo.is_vodka_constant=true;
                                 varinfo.in_data_section=true;
                                 varinfo.is_kernel_constant=true;
-                                varinfo.uuid=to_string(vodka::utilities::genuid());
+                                varinfo.uuid=vodka::utilities::genvyid();
                                 varinfo.name=arg;
                                 contele.variable_metadata=varinfo;
                                 contele.vodint_element=intele;
@@ -526,16 +567,24 @@ bool code_pre_treatement(bool replace,SourcesStack srclclstack) {
                                 return false;
                             }
                         } else if (arg.substr(0,1)=="%" && find(directs_data.begin(),directs_data.end(),arg)==directs_data.end()) {
+                            if (skip==true) {
+                                raise(ErrorContainer("vodka.error.line.datatype_replacement.instruction_ineligible : This instruction can't be pre-processed for datatypes replacement process",file_source,{maincell.content[i]},{maincell.start.line+i+1},lclstack));
+                                return false;
+                            }
                             if (vodka::type::vodec::check_value(arg.substr(1,arg.size()-1),localline,lclstack)) {
                                 vodka::variables::VodecVariable decele;
                                 decele.value=vodka::type::vodec::remove_zero(arg.substr(1,arg.size()-1));
+                                if (decele.value=="null") {
+                                    raise(ErrorContainer("vodka.error.line.datatype_replacement.forbidden_value : Values declared inside function can't be null",file_source,{maincell.content[i]},{maincell.start.line+i+1},lclstack));
+                                    return false;
+                                }
                                 vodka::variables::VariableContainer contele;
                                 vodka::variables::VariableMetadata varinfo;
                                 varinfo.algo_dependant=false;
                                 varinfo.is_vodka_constant=true;
                                 varinfo.in_data_section=true;
                                 varinfo.is_kernel_constant=true;
-                                varinfo.uuid=to_string(vodka::utilities::genuid());
+                                varinfo.uuid=vodka::utilities::genvyid();
                                 varinfo.name=arg;
                                 contele.variable_metadata=varinfo;
                                 contele.vodec_element=decele;
@@ -590,7 +639,7 @@ int main (int argc,char* argv[]) {
         case '!':
             var_warning_enabled=false;
         case '1':
-            cout<<"Vodka transcoder version 0.4 beta 3"<<endl;
+            cout<<"Vodka transcoder version 0.4"<<endl;
             cout<<"vodka-lib version "+vodka::LibraryVersion<<endl;
             cout<<"Json export format version 4"<<endl;
             cout<<"vodka-lib Json namespace version "+vodka::JsonVersion<<endl;
@@ -598,6 +647,8 @@ int main (int argc,char* argv[]) {
             cout<<" - Boost version "<<BOOST_VERSION/100000<<"."<< BOOST_VERSION/100%1000<<"."<<BOOST_VERSION%100<<endl;
             cout<<" - Json version "<<NLOHMANN_JSON_VERSION_MAJOR<<"."<<NLOHMANN_JSON_VERSION_MINOR<<"."<<NLOHMANN_JSON_VERSION_PATCH<<endl;
             cout<<" - Termcolor version 2.1.0"<<endl;
+            cout<<" - xxHash version "<<XXH_VERSION_MAJOR<<"."<<XXH_VERSION_MINOR<<"."<<XXH_VERSION_RELEASE<<endl;
+            cout<<"The dependencies without versioning system doesn't show here."<<endl;
             if (compiled_with_gpp) {
                 cout<<"g++ version used for compilation : "<<to_string(gpp_major)<<"."<<to_string(gpp_minor)<<"."<<to_string(gpp_patch)<<endl;
             } else {
@@ -742,6 +793,8 @@ int main (int argc,char* argv[]) {
             output::log("Checking vodka declaration syntax.",log_main_step,last,2,{(int)i+1,1},{maincell.content.size(),6});
             vodka::analyser::VariableDeclarationAnalyser VariableDeclarationAnalyser;
             VariableDeclarationAnalyser.line_checked=type_analyser;
+            VariableDeclarationAnalyser.variablesdict_context=main_variablesdict;
+            VariableDeclarationAnalyser.variableslist_context=main_variableslist;
             VariableDeclarationAnalyser.checked=VariableDeclarationAnalyser.parser(lclstack);
             if (VariableDeclarationAnalyser.checked==false) {
                 return -1;
@@ -798,7 +851,7 @@ int main (int argc,char* argv[]) {
                     //* Error is raised later
                 }
             }
-            if (type_analyser.library_name=="kernel") {
+            if (type_analyser.library_name=="memory") {
                 vodka::library::FunctionCall fcall;
                 fcall.verbose_context=verbose;
                 fcall.main_logstep_context=log_main_step;
@@ -809,7 +862,7 @@ int main (int argc,char* argv[]) {
                 fcall.file_name_context=file_source;
                 fcall.variablesdict_context=main_variablesdict;
                 fcall.line_checked=type_analyser;
-                vodka::library::kernel::CallTreatement engine;
+                vodka::library::memory::CallTreatement engine;
                 engine.function_call=fcall;
                 engine.checked=engine.call_treatement(lclstack);
                 if (engine.checked==false) {
@@ -1057,7 +1110,7 @@ int main (int argc,char* argv[]) {
                     jsonth.instruction_name=string_utilities::split(line," ")[0];
                     auto eles=string_utilities::split(line," ");
                     jsonth.args=vector<string>(eles.begin()+1,eles.end());
-                    json_ints[to_string(a)+"@"+actualcell+":"+to_string(genuid())]=jsonth.syntax();
+                    json_ints[to_string(a)+"@"+actualcell+":"+genvyid()]=jsonth.syntax();
                     a=a+1;
                 } else {
                     vodka::json::kernel::JsonContainer jsonth;
@@ -1073,7 +1126,7 @@ int main (int argc,char* argv[]) {
                         }
                     }
                     jsonth.args={otherside};
-                    json_ints[to_string(a)+":"+to_string(genuid())]=jsonth.syntax();
+                    json_ints[to_string(a)+":"+genvyid()]=jsonth.syntax();
                 }
             } else if (line=="endargs") {
                 endargs=true;
@@ -1110,12 +1163,12 @@ int main (int argc,char* argv[]) {
             symb.type=symbols[i].type;
             auto args=string_utilities::split(symbols[i].content," ");
             symb.args=vector<string>(args.begin()+1,args.end());
-            symb.uid=to_string(genuid());
+            symb.uid=genvyid();
             if (symb.type=="VODSTART" && cellstart==false) {
                 cellcount=cellcount+1;
                 vodka::json::vodka::VodkaCell cell;
                 cell.name=symb.args[0];
-                cell.uid=to_string(cellcount)+":"+to_string(genuid());
+                cell.uid=to_string(cellcount)+":"+genvyid();
                 cell.start=symb;
                 cellstart=true;
                 actualcell=cell;
@@ -1126,7 +1179,7 @@ int main (int argc,char* argv[]) {
                 cellstart=false;
                 idencell.insert(idencell.begin(),actualcell);
             }
-            json_ints_v["symbols"][to_string(i+1)+":"+to_string(genuid())]=symb.syntax();
+            json_ints_v["symbols"][to_string(i+1)+":"+genvyid()]=symb.syntax();
         }
         output::log("Converting cells : ",log_main_step,last,1,{2},{2});
         for (int i=0;i<idencell.size();++i) {
@@ -1135,7 +1188,7 @@ int main (int argc,char* argv[]) {
             for (auto a:cellcontent) {
                 if (a.substr(0,5)=="vodka") {
                     vodka::json::vodka::VodkaVariableDeclaration vardec;
-                    vardec.uid=to_string(genuid());
+                    vardec.uid=genvyid();
                     auto eles=string_utilities::split(a,"=");
                     auto namepart=eles[0];
                     auto valuepart=eles[1];
@@ -1159,7 +1212,7 @@ int main (int argc,char* argv[]) {
                 } else if (a.substr(0,6)=="kernel") {
                     vodka::json::vodka::VodkaInstruction instr;
                     instr.library="kernel";
-                    instr.uid=to_string(genuid());
+                    instr.uid=genvyid();
                     instr.name=string_utilities::split(a," ")[0];
                     instr.source="<builtin>";
                     auto eles=string_utilities::split(a," ");
@@ -1171,7 +1224,7 @@ int main (int argc,char* argv[]) {
                 } else if (a.substr(0,11)=="conversions") {
                     vodka::json::vodka::VodkaInstruction instr;
                     instr.library="conversions";
-                    instr.uid=to_string(genuid());
+                    instr.uid=genvyid();
                     instr.name=string_utilities::split(a," ")[0];
                     instr.source="<builtin>";
                     auto eles=string_utilities::split(a," ");
@@ -1183,7 +1236,7 @@ int main (int argc,char* argv[]) {
                 } else if (a.substr(0,4)=="math") {
                     vodka::json::vodka::VodkaInstruction instr;
                     instr.library="math";
-                    instr.uid=to_string(genuid());
+                    instr.uid=genvyid();
                     instr.name=string_utilities::split(a," ")[0];
                     instr.source="<builtin>";
                     auto eles=string_utilities::split(a," ");

@@ -14,6 +14,7 @@ vodka-lib is the static internal C++ library that powers the Vodka transcoder an
   - [vodka::InternalLibraryFunctions](#stdvectorstdstring-vodkainternallibrarylist)
   - [vodka::InternalDatatypes](#stdvectorstdstring-vodkainternaldatatypes)
   - [vodka::InternalSyscalls](#stdvectorstdstring-vodkainternalsyscalls)
+  - [vodka::IndexStartDatatypeReplacement](#stdmapstdstring-int-vodkaindexstartdatatypereplacement)
 - [Environnements variables](#environnements-variables)
   - [VODKA_SHOW_LOG_TIME](#vodka_show_log_time)
   - [VODKA_DEBUG_MODE](#vodka_debug_mode)
@@ -47,6 +48,7 @@ vodka-lib is the static internal C++ library that powers the Vodka transcoder an
   - [class vodka::syscalls::ESCAPE](#class-vodkasyscallsescape)
   - [class vodka::syscalls::INSERT](#class-vodkasyscallsinsert)
   - [class vodka::syscalls::FIND](#class-vodkasyscallsfind)
+  - [class vodka::syscalls::GETMEM](#class-vodkasyscallsgetmem)
   - [class vodka::syscalls::SyscallContainer](#class-vodkasyscallssyscallcontainer)
 - [vodka::variables](#vodkavariables)
   - [enum class vodka::variables::VariableDatatype](#enum-class-vodkavariablesvariabledatatype)
@@ -84,7 +86,8 @@ vodka-lib is the static internal C++ library that powers the Vodka transcoder an
     - [struct vodka::utilities::structs::symbol](#struct-vodkautilitiessymbol)
     - [struct vodka::utilities::structs::cellule](#struct-vodkautilitiescellule)
     - [struct vodka::utilities::structs::import](#struct-vodkautilitiesimport)
-  - [boost::uuids::uuid vodka::utilities::genuid()](#boostuuidsuuid-vodkautilitiesgenuid)
+    - [struct vodka::utilities::structs::random_values](#struct-vodkautilitiesstructsrandom_values)
+  - [std::string vodka::utilities::genvyid()](#stdstring-vodkautilitiesgenvyid)
   - [vodka::utilities::output](#vodkautilitiesoutput)
     - [void vodka::utilities::output::log()](#void-vodkautilitiesoutputlogstdstring-text-int-log_main_step-stdstring-last-int-sublevel-stdvectorint-substep---stdvectorunsigned-long-subtotal--)
     - [void vodka::utilities::output::debuglog()](#void-vodkautilitiesoutputdebuglogstdstring-text-int-line-stdstring-cell-bool-debug_mode-stdstring-file-bool-debug_info)
@@ -96,8 +99,8 @@ vodka-lib is the static internal C++ library that powers the Vodka transcoder an
   - [double vodka::utilities::get_process_time()](#double-vodkautilitiesget_process_time)
 - [vodka::library](#vodkalibrary)
   - [class vodka::library::FunctionCall](#class-vodkalibraryfunctioncall)
-  - [vodka::library::kernel](#vodkalibrarykernel)
-    - [class vodka::library::kernel::CallTreatement](#class-vodkalibrarykernelcalltreatement)
+  - [vodka::library::memory](#vodkalibrarymemory)
+    - [class vodka::library::memory::CallTreatement](#class-vodkalibrarymemorycalltreatement)
   - [vodka::library::conversions](#vodkalibraryconversions)
     - [class vodka::library::conversions::CallTreatement](#class-vodkalibraryconversionscalltreatement)
   - [vodka::library::vodstr](#vodkalibraryvodstr)
@@ -144,6 +147,10 @@ The list of native type that can appear in a variable declaration.
 ### `std::vector<std::string> vodka::InternalSyscalls`
 
 The list of all the syscalls implemented for this version of vodka-lib.
+
+### `std::map<std::string, int> vodka::IndexStartDatatypeReplacement`
+
+This map specifies, for each function in every internal library, the argument index where the datatype replacement process should begin. A value of `-1` means that the function does not support this feature.
 
 ## Environnements variables
 
@@ -234,7 +241,7 @@ That namespace is responsible for syscalls syntax generation.
 
 That class indicate which syscall is stored.
 
-**Possible values:** `PRINT`, `ADD`, `ASSIGN`, `FREE`, `INVERT`, `DUPLICATE`, `ABS`, `DIVMOD`, `TOINT`, `TODEC`, `MULINT`, `MULDEC`, `DIVIDE`, `LENGTH`, `CONCAT`,`SUBSTRING`, `CHARAT`, `REVERSE`, `ESCAPE`, `INSERT`, `FIND`
+**Possible values:** `PRINT`, `ADD`, `ASSIGN`, `FREE`, `INVERT`, `DUPLICATE`, `ABS`, `DIVMOD`, `TOINT`, `TODEC`, `MULINT`, `MULDEC`, `DIVIDE`, `LENGTH`, `CONCAT`,`SUBSTRING`, `CHARAT`, `REVERSE`, `ESCAPE`, `INSERT`, `FIND`, `GETMEM`
 
 ---
 
@@ -487,6 +494,17 @@ This is the class for the `FIND` syscall.
 
 ---
 
+### `class vodka::syscalls::GETMEM`
+
+This is the class for the `GETMEM` syscall.
+
+**Attributes that must be set after declaration:**
+- `std::string output_uid` : the UID of the output variable
+- `std::string source_uid` : the UID of the source variable
+- `std::string name` : the name of the syscall. **Shouldn't be modified.**
+
+---
+
 ### `class vodka::syscalls::SyscallContainer`
 
 This is the class that will generate the syntax for each syscall.
@@ -516,6 +534,7 @@ This is the class that will generate the syntax for each syscall.
 - `ESCAPE escape_element` : if `thing` is `vodka::syscalls::SyscallsNames::ESCAPE`
 - `INSERT insert_element` : if `thing` is `vodka::syscalls::SyscallsNames::INSERT`
 - `FIND find_element` : if `thing` is `vodka::syscalls::SyscallsNames::FIND`
+- `GETMEM getmem_element` : if `thing` is `vodka::syscalls::SyscallsNames::GETMEM`
 
 **Methods:**
 - `string syntax()` : generate the line to be outputed, according to the value inside `thing`
@@ -910,9 +929,20 @@ This is the structure responsible for storing an import. **It's not actually use
 
 ---
 
-### `boost::uuids::uuid vodka::utilities::genuid()`
+#### `struct vodka::utilities::structs::random_values`
 
-This function is used to generate UID for all the elements inside the Vodka transcoder and vodka-lib. These UID can be directly translated into `std::string` using `std::to_string`.
+This is the structure responsible for storing random values for `vodka::utilities::genvyid()`. It is automatically generated.
+
+**Attributes:**
+- `std::uint64_t rand1` : the first random value
+- `std::uint64_t rand2` : the second random value
+- `std::uint64_t rand3` : the third random value
+
+---
+
+### `std::string vodka::utilities::genvyid()`
+
+This function is used to generate VYID for all the elements inside the Vodka transcoder and vodka-lib. This is the function that should be used in order for the generation to be fast and smooth and the usage of the function to be simple.
 
 ---
 
@@ -1060,21 +1090,21 @@ This class store all the context needed to transcode an internal library functio
 
 ---
 
-### `vodka::library::kernel`
+### `vodka::library::memory`
 
-This namespace is responsible for the transcoding of the kernel internal libraries function call.
+This namespace is responsible for the transcoding of the memory internal libraries function call.
 
 ---
 
-#### `class vodka::library::kernel::CallTreatement`
+#### `class vodka::library::memory::CallTreatement`
 
-This is the class that transcode kernel internal library function call into a list of usable `vodka::syscalls::SyscallContainer`.
+This is the class that transcode memory internal library function call into a list of usable `vodka::syscalls::SyscallContainer`.
 
 **Arguments that should be set just after declaration:**
 - `vodka::library::FunctionCall function_call` : the function call with all his context
 
 **Arguments that indicate the output (only set after call_treatement):**
-- `std::vector<vodka::syscalls::SyscallContainer> syscalls_output` : the list of syscall object that should be added in the kernel code output
+- `std::vector<vodka::syscalls::SyscallContainer> syscalls_output` : the list of syscall object that should be added in the memory code output
 - `bool var_flag` : indicate if the main program should replace his list and map of existing variables with the one into the function call object that was modified
 
 **Arguments that should be set by method:**

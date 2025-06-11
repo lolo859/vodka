@@ -7,8 +7,11 @@ Welcome to the documentation for the Vodka transcoder and vodka-lib, the C++ lib
 ## Dependencies
 
 The Vodka transcoder and vodka-lib have the following dependencies in order to be build :
-- termcolor
+- termcolor by ikalnytskyi
 - nlohmann/json
+- base85
+- xxHash by Cyan4973
+- XoshiroCpp by Reputeless
 - boost
 
 The first two are already included inside the dependencies folder. Boost version need to be at least 1.84 (1.88 is the recommended version) and, because of his unavaibality on packages managers, need to be compiled by hand. The compilation script need Boost to be located in the system folder.
@@ -57,3 +60,10 @@ Please see any of these file for more details:
 - [Vodka language syntax and codebase](https://github.com/lolo859/vodka/docs/vodka-codebase.md)
 - [Kernel code syntax and codebase](https://github.com/lolo859/vodka/docs/kernel-codebase.md)
 - [vodka-lib docs](https://github.com/lolo859/vodka/docs/vodka-lib-usage.md)
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 (GPLv3).  
+For full details, please refer to the [LICENSE](./LICENSE) file included in this repository.  You can also use `--license` on the executable file to see the license.
+
+Note that this project depends on third-party libraries all of which are compatible with the GPLv3 license.

@@ -2,27 +2,51 @@
 #define VODKA_LIB_H
 #include <string>
 #include <vector>
+#include <random>
 #include <map>
 #include <algorithm>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
 #include <filesystem>
 #include <iostream>
+#include "../dependencies/XoshiroCpp.hpp"
 using namespace std;
 //* Vodka standard utilities
 //* For documentation, please refer to vodka-lib-usage.md
 namespace vodka {
-    const string LibraryVersion="0.4 beta 3";
+    const string LibraryVersion="0.4";
     const string JsonVersion="4";
     //* Every library that has a reserved name inside the transcoder
-    const vector<string> InternalLibraryList={"kernel","conversions","math","vodstr"};
+    const vector<string> InternalLibraryList={"memory","conversions","math","vodstr"};
     //* Every functions for every internal library
-    const map<string,vector<string>> InternalLibraryFunctions={{"kernel",{"print","add","assign","free","invert","duplicate","abs","divmod","divide","mulint","muldec"}},{"conversions",{"toint","todec","tostr"}},{"math",{"multiply"}},{"vodstr",{"length","concat","substring","charat","reverse","escape","insert","find"}}};
+    const map<string,vector<string>> InternalLibraryFunctions={{"memory",{"print","free","getmem"}},{"conversions",{"toint","todec","tostr"}},{"math",{"multiply","add","invert","abs","divmod","divide","mulint","muldec"}},{"vodstr",{"length","concat","substring","charat","reverse","escape","insert","find"}}};
     //* Every internal type
     const vector<string> InternalDataypes={"vodint","vodec","vodstr","vodarg","vodka"};
     //* Every syscall
-    const vector<string> InternalSyscalls={"PRINT","ADD","ASSIGN","FREE","INVERT","DUPLICATE","ABS","DIVMOD","TOINT","TODEC","MULINT","MULDEC","DIVIDE","LENGTH","CONCAT","SUBSTRING","CHARAT","REVERSE","ESCAPE","INSERT","FIND"};
+    const vector<string> InternalSyscalls={"PRINT","ADD","ASSIGN","FREE","INVERT","DUPLICATE","ABS","DIVMOD","TOINT","TODEC","MULINT","MULDEC","DIVIDE","LENGTH","CONCAT","SUBSTRING","CHARAT","REVERSE","ESCAPE","INSERT","FIND","GETMEM"};
+    //* Indicate where to start datatype values replacement process (-1 mean instruction can't benefit of this feature)
+    const map<string,int> IndexStartDatatypeReplacement={
+        {"memory.print",1},
+        {"memory.free",-1},
+        {"conversions.toint",-1},
+        {"conversions.todec",-1},
+        {"conversions.tostr",-1},
+        {"math.multiply",2},
+        {"math.add",2},
+        {"math.invert",-1},
+        {"math.abs",-1},
+        {"math.divmod",3},
+        {"math.divide",2},
+        {"math.mulint",2},
+        {"math.muldec",2},
+        {"vodstr.length",-1},
+        {"vodstr.concat",-1},
+        {"vodstr.substring",3},
+        {"vodstr.charat",3},
+        {"vodstr.reverse",-1},
+        {"vodstr.escape",-1},
+        {"vodstr.insert",-1},
+        {"vodstr.find",-1},
+        {"memory.getmem",2}
+    };
     //* Errors handling
     namespace errors {
         //* Contain the call stack of the error
@@ -54,7 +78,7 @@ namespace vodka {
         //* Error raising function
         void raise(ErrorContainer element);
     }
-    //* Syscall utilities (instruction starting with "kernel.<something>")
+    //* Syscall utilities
     namespace syscalls {
         //* Enum class for representating each syscall
         enum class SyscallsNames {
@@ -78,7 +102,8 @@ namespace vodka {
             REVERSE,
             ESCAPE,
             INSERT,
-            FIND
+            FIND,
+            GETMEM
         };
         //* Convert SyscallsNames object to string
         string syscall_to_string(SyscallsNames syscall);
@@ -222,6 +247,12 @@ namespace vodka {
                 string output_uid;
                 string name="FIND";
         };
+        class GETMEM {
+            public:
+                string source_uid;
+                string output_uid;
+                string name="GETMEM";
+        };
         //* For registering a syscall, it need to be encapsuled into a SyscallContainer object
         class SyscallContainer {
             public:
@@ -248,6 +279,7 @@ namespace vodka {
                 ESCAPE escape_element;
                 INSERT insert_element;
                 FIND find_element;
+                GETMEM getmem_element;
             //* Function for getting the syntax of the syscall
             string syntax();
         };
@@ -347,6 +379,8 @@ namespace vodka {
                 vodka::variables::VariableContainer variable_container;
                 vodka::variables::VariableContainer duplication_source_variable;
                 vodka::syscalls::SyscallContainer syscall_container;
+                vector<string> variableslist_context;
+                map<string,vodka::variables::VariableContainer> variablesdict_context;
             //* These functions should be used in this order
             //* Parse the variable declaration (name, datatype, value, constant)
             bool parser(vodka::errors::SourcesStack lclstack={});
@@ -469,9 +503,15 @@ namespace vodka {
                 string importas;
                 vector<string> content;
             };
+            struct random_values {
+                uint64_t rand1;
+                uint64_t rand2;
+                uint64_t rand3;
+            };
         }
         //* UUID generator
-        boost::uuids::uuid genuid();
+        std::string genvyid(XoshiroCpp::Xoshiro256StarStar& gen,vodka::utilities::structs::random_values& rand);
+        std::string genvyid();
         //* Logs functions
         namespace output {
             void log(string text,int log_main_step,string last,int sublevel=0,vector<int> substep={},vector<unsigned long> subtotal={});
@@ -492,38 +532,32 @@ namespace vodka {
         class FunctionCall {
             public:
                 vodka::analyser::LineTypeChecker line_checked;
-                vector<string> variableslist_context;
                 vodka::utilities::structs::cell cell_context;
                 int iteration_number_context;
                 string file_name_context;
                 string verbose_context;
                 int main_logstep_context;
                 string last_logstep_context;
+                vector<string> variableslist_context;
                 map<string,vodka::variables::VariableContainer> variablesdict_context;
         };
-        //* Kernel internal library
-        namespace kernel {
-            //* Main class for parsing line that call kernel internal library
+        //* Memory internal library
+        namespace memory {
+            //* Main class for parsing line that call memory internal library
             class CallTreatement {
                 public:
                     vodka::library::FunctionCall function_call;
                     vector<vodka::syscalls::SyscallContainer> syscalls_output;
                     bool checked=false;
                     bool var_flag=false;
-                    //* Main function for parsing kernel internal library
+                    //* Main function for parsing memory internal library
                     bool call_treatement(vodka::errors::SourcesStack lclstack={});
                 private:
                     string line;
                     //* Private functions for analysing each instructions
                     bool print_int(vodka::errors::SourcesStack lclstack={});
-                    bool add_int(vodka::errors::SourcesStack lclstack={});
-                    bool invert_int(vodka::errors::SourcesStack lclstack={});
                     bool free_int(vodka::errors::SourcesStack lclstack={});
-                    bool abs_int(vodka::errors::SourcesStack lclstack={});
-                    bool divmod_int(vodka::errors::SourcesStack lclstack={});
-                    bool divide_int(vodka::errors::SourcesStack lclstack={});
-                    bool mulint_int(vodka::errors::SourcesStack lclstack={});
-                    bool muldec_int(vodka::errors::SourcesStack lclstack={});
+                    bool getmem_int(vodka::errors::SourcesStack lclstack={});
             };
         }
         //* Conversions internal library
@@ -558,6 +592,13 @@ namespace vodka {
                 private:
                     string line;
                     //* Private functions for analysing each instructions
+                    bool add_int(vodka::errors::SourcesStack lclstack={});
+                    bool invert_int(vodka::errors::SourcesStack lclstack={});
+                    bool abs_int(vodka::errors::SourcesStack lclstack={});
+                    bool divmod_int(vodka::errors::SourcesStack lclstack={});
+                    bool divide_int(vodka::errors::SourcesStack lclstack={});
+                    bool mulint_int(vodka::errors::SourcesStack lclstack={});
+                    bool muldec_int(vodka::errors::SourcesStack lclstack={});
                     bool multiply(vodka::errors::SourcesStack lclstack={});
             };
         }
