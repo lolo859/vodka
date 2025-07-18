@@ -12,7 +12,7 @@ using namespace std;
 //* Vodka standard utilities
 //* For documentation, please refer to vodka-lib-usage.md
 namespace vodka {
-    const string LibraryVersion="0.4";
+    const string LibraryVersion="0.4.1";
     const string JsonVersion="4";
     //* Every library that has a reserved name inside the transcoder
     const vector<string> InternalLibraryList={"memory","conversions","math","vodstr"};
@@ -503,14 +503,8 @@ namespace vodka {
                 string importas;
                 vector<string> content;
             };
-            struct random_values {
-                uint64_t rand1;
-                uint64_t rand2;
-                uint64_t rand3;
-            };
         }
         //* UUID generator
-        std::string genvyid(XoshiroCpp::Xoshiro256StarStar& gen,vodka::utilities::structs::random_values& rand);
         std::string genvyid();
         //* Logs functions
         namespace output {

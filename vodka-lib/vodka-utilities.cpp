@@ -1,7 +1,6 @@
 #include "vodka-lib.h"
 #include "../dependencies/termcolor.hpp"
-#include "../dependencies/base85.h"
-#include "../dependencies/XoshiroCpp.hpp"
+#include "../dependencies/vyid.h"
 #include <iostream>
 #include <fstream>
 #include <random>
@@ -15,9 +14,7 @@
 #include <sys/resource.h>
 #include <stdexcept>
 #include <cstdlib>
-extern "C" {
-    #include "../dependencies/xxhash.h"
-};
+#include <chrono>
 using namespace std;
 double vodka::utilities::get_process_time() {
     struct rusage usage;
@@ -64,91 +61,9 @@ string vodka::utilities::string_utilities::strip(string text,string character) {
     return text.substr(i);
 }
 //* UUID generator
-string vodka::utilities::genvyid(XoshiroCpp::Xoshiro256StarStar& gen,vodka::utilities::structs::random_values& rand) {
-    uniform_int_distribution<uint64_t> dist(0,0xFFFFFFFFFFFFFFFFULL);
-    rand.rand1=dist(gen);
-    rand.rand2=dist(gen);
-    rand.rand3=dist(gen);
-    uint64_t seed=rand.rand1^rand.rand2^rand.rand3;
-    char sign1[16];
-    char sign2[16];
-    char sign3[16];
-    memcpy(sign1,&rand.rand2,8);
-    memcpy(sign1+8,&rand.rand3,8);
-    uint64_t sign1h=XXH3_64bits_withSeed(sign1,sizeof(sign1),seed);
-    memcpy(sign2,&rand.rand1,8);
-    memcpy(sign2+8,&rand.rand3,8);
-    uint64_t sign2h=XXH3_64bits_withSeed(sign2,sizeof(sign2),seed);
-    memcpy(sign3,&rand.rand1,8);
-    memcpy(sign3+8,&rand.rand2,8);
-    uint64_t sign3h=XXH3_64bits_withSeed(sign3,sizeof(sign3),seed);
-    uint64_t lenc1=rand.rand1^sign1h;
-    uint64_t lenc2=rand.rand2^sign2h;
-    uint64_t lenc3=rand.rand3^sign3h;
-    uint32_t enc1=lenc1>>32;
-    uint32_t enc2=lenc2>>32;
-    uint32_t enc3=lenc3>>32;
-    char total[12];
-    memcpy(total,&enc1,4);
-    memcpy(total+4,&enc2,4);
-    memcpy(total+8,&enc3,4);
-    auto sumtotal=XXH3_64bits_withSeed(total,sizeof(total),seed);
-    uint32_t trunctotal=sumtotal>>32;
-    char grph[4];
-    memcpy(grph,&trunctotal,4);
-    auto sumgrp=XXH3_64bits_withSeed(grph,sizeof(grph),seed);
-    uint32_t truncgrp=sumgrp>>32;
-    char output[70];
-    char grp[6];
-    char hash[6];
-    char enchar1[6];
-    char enchar2[6];
-    char enchar3[6];
-    char rand1[11];
-    char rand2[11];
-    char rand3[11];
-    base85::uint32_to_b85(truncgrp,grp);
-    base85::uint32_to_b85(enc1,enchar1);
-    base85::uint32_to_b85(enc2,enchar2);
-    base85::uint32_to_b85(enc3,enchar3);
-    base85::uint64_to_b85(rand.rand1,rand1);
-    base85::uint64_to_b85(rand.rand2,rand2);
-    base85::uint64_to_b85(rand.rand3,rand3);
-    base85::uint32_to_b85(trunctotal,hash);
-    int offset=0;
-    output[offset++]='[';
-    memcpy(output+offset,grp,5);
-    offset+=5;
-    output[offset++]='-';
-    memcpy(output+offset,enchar1,5);
-    offset+=5;
-    memcpy(output+offset,rand1,10);
-    offset+=10;
-    output[offset++]='-';
-    memcpy(output+offset,enchar2,5);
-    offset+=5;
-    memcpy(output+offset,rand2,10);
-    offset+=10;
-    output[offset++]='-';
-    memcpy(output+offset,enchar3,5);
-    offset+=5;
-    memcpy(output+offset,rand3,10);
-    offset+=10;
-    output[offset++]='-';
-    memcpy(output+offset,hash,5);
-    offset+=5;
-    output[offset++]=']';
-    output[offset]='\0';
-    return string(output);
-}
 string vodka::utilities::genvyid() {
-    static thread_local XoshiroCpp::Xoshiro256StarStar ran = []() {random_device rd;
-        mt19937_64 seeder(rd());
-        array<uint64_t,4> seed_data={seeder(),seeder(),seeder(),seeder()};
-        return XoshiroCpp::Xoshiro256StarStar(seed_data);
-    }();
-    static thread_local vodka::utilities::structs::random_values rands;
-    return genvyid(ran,rands);
+    auto id=vyid::v1::generate_vyid_string();
+    return id;
 }
 //* Logs functions
 void vodka::utilities::output::log(string text,int log_main_step,string last,int sublevel,vector<int> substep,vector<unsigned long> subtotal) {

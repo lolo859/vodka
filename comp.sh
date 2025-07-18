@@ -10,10 +10,10 @@ fi
 echo "Using $COMPILER ($VERSION)"
 case "$1" in
     library)
+        echo "Building Library"
         echo "Building dependencies"
         g++ -c dependencies/xxhash.c -o xxhash.o
-        echo "Compiled xxHash"
-        echo "Building Library"
+        echo "Compiled xxhash"
         g++ -c vodka-lib/vodka-utilities.cpp -o vodka-utilities.o
         echo "Compiled vodka-utilities"
         g++ -c vodka-lib/vodka-type.cpp -o vodka-type.o
@@ -38,13 +38,14 @@ case "$1" in
         echo "Compiled vil-vodstr"
         ar rcs libvodka.a vodka-json.o vodka-type.o vodka-syscalls.o vodka-utilities.o vodka-analyser.o vodka-errors.o vodka-variables.o vil-memory.o vil-conversions.o vil-math.o vil-vodstr.o xxhash.o
         echo "Library built under libvodka.a"
+        echo "Library doesn't not include libblake.a, make sure to link it when compiling something that use libvodka.a"
         ;;
     all)
         echo "Building vodka transcoder"
+        echo "Building Library"
         echo "Building dependencies"
         g++ -c dependencies/xxhash.c -o xxhash.o
-        echo "Compiled xxHash"
-        echo "Building Library"
+        echo "Compiled xxhash"
         g++ -c vodka-lib/vodka-utilities.cpp -o vodka-utilities.o
         echo "Compiled vodka-utilities"
         g++ -c vodka-lib/vodka-type.cpp -o vodka-type.o
@@ -69,16 +70,14 @@ case "$1" in
         echo "Compiled vil-vodstr"
         ar rcs libvodka.a vodka-json.o vodka-type.o vodka-syscalls.o vodka-utilities.o vodka-analyser.o vodka-errors.o vodka-variables.o vil-memory.o vil-conversions.o vil-math.o vil-vodstr.o xxhash.o
         echo "Library built under libvodka.a"
-        g++ vodka.cpp -o vodka -L. -lvodka
+        echo "Library doesn't not include libblake.a, make sure to link it when compiling something that use libvodka.a"
+        g++ vodka.cpp -o vodka -L. -lvodka -L./dependencies -lblake -I./dependencies
         echo "Vodka built under vodka"
         rm vodka-utilities.o vodka-type.o vodka-syscalls.o vodka-json.o vodka-analyser.o vil-memory.o vodka-errors.o vodka-variables.o vil-conversions.o libvodka.a vil-math.o vil-vodstr.o xxhash.o
         ;;
     vodka)
-        echo "Building dependencies"
-        g++ -c dependencies/xxhash.c -o xxhash.o
-        echo "Compiled xxHash"
         echo "Building Vodka"
-        g++ vodka.cpp -o vodka -L. -lvodka
+        g++ vodka.cpp -o vodka -L. -lvodka -L./dependencies -lblake -I./dependencies
         echo "Vodka built under vodka"
         ;;
     clean)
@@ -87,10 +86,10 @@ case "$1" in
         ;;
     *)
         echo "Building vodka transcoder"
+        echo "Building Library"
         echo "Building dependencies"
         g++ -c dependencies/xxhash.c -o xxhash.o
-        echo "Compiled xxHash"
-        echo "Building Library"
+        echo "Compiled xxhash"
         g++ -c vodka-lib/vodka-utilities.cpp -o vodka-utilities.o
         echo "Compiled vodka-utilities"
         g++ -c vodka-lib/vodka-type.cpp -o vodka-type.o
@@ -115,8 +114,9 @@ case "$1" in
         echo "Compiled vil-vodstr"
         ar rcs libvodka.a vodka-json.o vodka-type.o vodka-syscalls.o vodka-utilities.o vodka-analyser.o vodka-errors.o vodka-variables.o vil-memory.o vil-conversions.o vil-math.o vil-vodstr.o xxhash.o
         echo "Library built under libvodka.a"
+        echo "Library doesn't not include libblake.a, make sure to link it when compiling something that use libvodka.a"
         echo "Building Vodka"
-        g++ vodka.cpp -o vodka -L. -lvodka
+        g++ vodka.cpp -o vodka -L. -lvodka -L./dependencies -lblake -I./dependencies
         echo "Vodka built under vodka"
         rm vodka-utilities.o vodka-type.o vodka-syscalls.o vodka-json.o vodka-analyser.o vil-memory.o vodka-errors.o vodka-variables.o libvodka.a vil-conversions.o vil-math.o vil-vodstr.o xxhash.o
         ;;
