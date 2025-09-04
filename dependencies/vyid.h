@@ -104,7 +104,7 @@ namespace vyid {
             offset+=5;
             output[offset++]=']';
             output[offset]='\0';
-            return std::string(output,output+62);
+            return std::string(output,output+61);
         }
         #endif
         //* Function to generate a VYIDv1, made for single use

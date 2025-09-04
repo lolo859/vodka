@@ -9,7 +9,6 @@
 #include <string>
 #include <cstring>
 #include <vector>
-#include <boost/crc.hpp>
 #include <filesystem>
 #include <sys/resource.h>
 #include <stdexcept>
@@ -66,7 +65,7 @@ string vodka::utilities::genvyid() {
     return id;
 }
 //* Logs functions
-void vodka::utilities::output::log(string text,int log_main_step,string last,int sublevel,vector<int> substep,vector<unsigned long> subtotal) {
+void vodka::utilities::output::log(string text,int log_main_step,int sublevel,vector<int> substep,vector<unsigned long> subtotal) {
     const char* format=getenv("VODKA_SHOW_LOG_TIME");
     string time;
     if (format!=nullptr && string(format)=="TRUE") {
@@ -85,6 +84,7 @@ void vodka::utilities::output::log(string text,int log_main_step,string last,int
     } else {
         verbose="e";
     }
+    string last;
     if (verbose=="a" || verbose=="r") {
         if (sublevel==0) {
             if (verbose=="a" || verbose=="r") {
@@ -198,4 +198,40 @@ void vodka::utilities::output::var_warning(string namevar,vodka::variables::Vari
             cout<<endl<<time+"[WARNING] vodka.warnings.unused_variable : Variable "<<termcolor::bold<<namevar+" ("+vodka::variables::datatype_to_string(typevar)+")"<<termcolor::reset<<", declared line "<<termcolor::bold<<line<<termcolor::reset<<" in cell "<<termcolor::magenta<<termcolor::bold<<namecell<<termcolor::reset<<", isn't used anywhere and may take useless memory."<<endl;
         }
     }
+}
+string vodka::utilities::encoding::hash_then_encode(string origin) {
+    blake3_hasher hasher;
+    blake3_hasher_init(&hasher);
+    blake3_hasher_update(&hasher,origin.data(),origin.size());
+    uint8_t digest[64];
+    blake3_hasher_finalize(&hasher,digest,sizeof(digest));
+    string out;
+    for (auto byte:digest) {
+        bitset<8> bits(static_cast<unsigned char>(byte));
+        auto str=bits.to_string();
+        for (auto a:str) {
+            if (a=='0') {
+                out+=u8"\u200B";
+            } else {
+                out+=u8"\u2063";
+            }
+        }
+    }
+    return out;
+}
+string vodka::utilities::encoding::encode_to_bin(string input) {
+    string binar;
+    for (unsigned char a:input) {
+        bitset<8> bits(a);
+        binar=binar+bits.to_string();
+    }
+    string out;
+    for (auto a:binar) {
+        if (a=='0') {
+            out=out+u8"\u200B";
+        } else {
+            out=out+u8"\u2063";
+        }
+    }
+    return vodka::utilities::encoding::hash_then_encode(out);
 }

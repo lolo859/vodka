@@ -10,10 +10,10 @@ using namespace vodka::errors;
 bool vodka::library::math::CallTreatement::add_int(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    output::log("Checking system call syntax.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),1});
+    output::log("Checking system call syntax.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),1});
     auto eles=string_utilities::split(line," ");
     if (eles.size()>=4) {
-        output::log("Checking content existence and datatype.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),2});
+        output::log("Checking content existence and datatype.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),2});
         vector<string> argsname(eles.begin()+1,eles.end());
         vodka::analyser::ArgumentChecker argcheck;
         argcheck.lastest_allowed_type={vodka::variables::VariableDatatype::vodint,vodka::variables::VariableDatatype::vodec};
@@ -34,7 +34,7 @@ bool vodka::library::math::CallTreatement::add_int(SourcesStack lclstack) {
                 return false;
             }
         }
-        output::log("Registering system call.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
+        output::log("Registering system call.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
         vector<string> argsuid;
         if (eles.size()==4) {
             for (auto a:argsname) {
@@ -82,10 +82,10 @@ bool vodka::library::math::CallTreatement::add_int(SourcesStack lclstack) {
 bool vodka::library::math::CallTreatement::invert_int(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    output::log("Checking system call syntax.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
+    output::log("Checking system call syntax.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
     auto eles=string_utilities::split(line," ");
     if (eles.size()==3) {
-        output::log("Checking content existence and datatype.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
+        output::log("Checking content existence and datatype.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
         vector<string> argsname(eles.begin()+1,eles.end());
         vodka::analyser::ArgumentChecker argcheck;
         argcheck.lastest_allowed_type={};
@@ -106,7 +106,7 @@ bool vodka::library::math::CallTreatement::invert_int(SourcesStack lclstack) {
                 return false;
             }
         }
-        output::log("Registering system call.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,4},{function_call.cell_context.content.size(),3});
+        output::log("Registering system call.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,4},{function_call.cell_context.content.size(),3});
         vector<string> uidargs;
         for (auto a:argsname) {
             uidargs.push_back(function_call.variablesdict_context[a].variable_metadata.uuid);
@@ -127,10 +127,10 @@ bool vodka::library::math::CallTreatement::invert_int(SourcesStack lclstack) {
 bool vodka::library::math::CallTreatement::abs_int(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    output::log("Checking system call syntax.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
+    output::log("Checking system call syntax.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
     auto eles=string_utilities::split(line," ");
     if (eles.size()==3) {
-        output::log("Checking content existence and datatype.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
+        output::log("Checking content existence and datatype.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
         vector<string> argsname(eles.begin()+1,eles.end());
         vodka::analyser::ArgumentChecker argcheck;
         argcheck.lastest_allowed_type={};
@@ -151,7 +151,7 @@ bool vodka::library::math::CallTreatement::abs_int(SourcesStack lclstack) {
                 return false;
             }
         }
-        output::log("Registering system call.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
+        output::log("Registering system call.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
         vector<string> uidargs;
         for (auto a:argsname) {
             uidargs.push_back(function_call.variablesdict_context[a].variable_metadata.uuid);
@@ -172,10 +172,10 @@ bool vodka::library::math::CallTreatement::abs_int(SourcesStack lclstack) {
 bool vodka::library::math::CallTreatement::divmod_int(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    output::log("Checking system call syntax.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
+    output::log("Checking system call syntax.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
     auto eles=string_utilities::split(line," ");
     if (eles.size()==5) {
-        output::log("Checking content existence and datatype.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
+        output::log("Checking content existence and datatype.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
         auto arg=vector<string>(eles.begin()+1,eles.end());
         vodka::analyser::ArgumentChecker argcheck;
         argcheck.lastest_allowed_type={};
@@ -194,7 +194,7 @@ bool vodka::library::math::CallTreatement::divmod_int(SourcesStack lclstack) {
             raise(ErrorContainer("vodka.error.library.math.divmod.same_output : the two output variables can't be the same.",function_call.file_name_context,{line},{function_call.cell_context.start.line+(int)function_call.iteration_number_context+1},srclclstack));
             return false;
         }
-        output::log("Registering system call.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
+        output::log("Registering system call.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
         string quouid=function_call.variablesdict_context[arg[0]].variable_metadata.uuid;
         string resuid=function_call.variablesdict_context[arg[1]].variable_metadata.uuid;
         string divid=function_call.variablesdict_context[arg[2]].variable_metadata.uuid;
@@ -217,10 +217,10 @@ bool vodka::library::math::CallTreatement::divmod_int(SourcesStack lclstack) {
 bool vodka::library::math::CallTreatement::divide_int(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    output::log("Checking system call syntax.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
+    output::log("Checking system call syntax.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
     auto eles=string_utilities::split(line," ");
     if (eles.size()==5) {
-        output::log("Checking content existence and datatype.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
+        output::log("Checking content existence and datatype.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
         auto arg=vector<string>(eles.begin()+1,eles.end());
         vodka::analyser::ArgumentChecker argcheck;
         argcheck.lastest_allowed_type={};
@@ -235,7 +235,7 @@ bool vodka::library::math::CallTreatement::divide_int(SourcesStack lclstack) {
             raise(ErrorContainer("vodka.error.variables.constant : Can't modify a constant.",function_call.file_name_context,{line},{function_call.cell_context.start.line+(int)function_call.iteration_number_context+1},srclclstack));
             return false;
         }
-        output::log("Registering system call.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
+        output::log("Registering system call.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
         vodka::syscalls::DIVIDE dividecall;
         dividecall.output_uid=function_call.variablesdict_context[arg[0]].variable_metadata.uuid;
         dividecall.first_uid=function_call.variablesdict_context[arg[1]].variable_metadata.uuid;
@@ -254,10 +254,10 @@ bool vodka::library::math::CallTreatement::divide_int(SourcesStack lclstack) {
 bool vodka::library::math::CallTreatement::mulint_int(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    output::log("Checking system call syntax.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
+    output::log("Checking system call syntax.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
     auto eles=string_utilities::split(line," ");
     if (eles.size()==4) {
-        output::log("Checking content existence and datatype.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
+        output::log("Checking content existence and datatype.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
         auto arg=vector<string>(eles.begin()+1,eles.end());
         vodka::analyser::ArgumentChecker argcheck;
         argcheck.lastest_allowed_type={};
@@ -272,7 +272,7 @@ bool vodka::library::math::CallTreatement::mulint_int(SourcesStack lclstack) {
             raise(ErrorContainer("vodka.error.variables.constant : Can't modify a constant.",function_call.file_name_context,{line},{function_call.cell_context.start.line+(int)function_call.iteration_number_context+1},srclclstack));
             return false;
         }
-        output::log("Registering system call.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
+        output::log("Registering system call.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
         vodka::syscalls::MULINT mulintcall;
         mulintcall.output_uid=function_call.variablesdict_context[arg[0]].variable_metadata.uuid;
         mulintcall.first_uid=function_call.variablesdict_context[arg[1]].variable_metadata.uuid;
@@ -290,10 +290,10 @@ bool vodka::library::math::CallTreatement::mulint_int(SourcesStack lclstack) {
 bool vodka::library::math::CallTreatement::muldec_int(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    output::log("Checking system call syntax.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
+    output::log("Checking system call syntax.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
     auto eles=string_utilities::split(line," ");
     if (eles.size()==5) {
-        output::log("Checking content existence and datatype.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
+        output::log("Checking content existence and datatype.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
         auto arg=vector<string>(eles.begin()+1,eles.end());
         vodka::analyser::ArgumentChecker argcheck;
         argcheck.lastest_allowed_type={};
@@ -308,7 +308,7 @@ bool vodka::library::math::CallTreatement::muldec_int(SourcesStack lclstack) {
             raise(ErrorContainer("vodka.error.variables.constant : Can't modify a constant.",function_call.file_name_context,{line},{function_call.cell_context.start.line+(int)function_call.iteration_number_context+1},srclclstack));
             return false;
         }
-        output::log("Registering system call.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,4},{function_call.cell_context.content.size(),3});
+        output::log("Registering system call.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,4},{function_call.cell_context.content.size(),3});
         vodka::syscalls::MULDEC muldeccall;
         muldeccall.output_uid=function_call.variablesdict_context[arg[0]].variable_metadata.uuid;
         muldeccall.first_uid=function_call.variablesdict_context[arg[1]].variable_metadata.uuid;
@@ -327,10 +327,10 @@ bool vodka::library::math::CallTreatement::muldec_int(SourcesStack lclstack) {
 bool vodka::library::math::CallTreatement::multiply(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    output::log("Checking instruction syntax.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
+    output::log("Checking instruction syntax.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,1},{function_call.cell_context.content.size(),3});
     auto eles=string_utilities::split(line," ");
     if (eles.size()==4) {
-        output::log("Checking content existence and datatype.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
+        output::log("Checking content existence and datatype.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
         vodka::analyser::ArgumentChecker argcheck;
         argcheck.lastest_allowed_type={};
         argcheck.patern={{vodka::variables::VariableDatatype::vodint,vodka::variables::VariableDatatype::vodec},{vodka::variables::VariableDatatype::vodint,vodka::variables::VariableDatatype::vodec},{vodka::variables::VariableDatatype::vodint,vodka::variables::VariableDatatype::vodec}};
@@ -352,7 +352,7 @@ bool vodka::library::math::CallTreatement::multiply(SourcesStack lclstack) {
             }
         }
         if (function_call.variablesdict_context[argsname[0]].thing==vodka::variables::VariableDatatype::vodint) {
-            output::log("Registering systems call for this instruction.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
+            output::log("Registering systems call for this instruction.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
             vector<string> uidargs;
             for (auto a:argsname) {
                 uidargs.push_back(function_call.variablesdict_context[a].variable_metadata.uuid);
@@ -367,7 +367,7 @@ bool vodka::library::math::CallTreatement::multiply(SourcesStack lclstack) {
             syscalls_output.push_back(mulintcont);
             return true;
         } else if (function_call.variablesdict_context[argsname[0]].thing==vodka::variables::VariableDatatype::vodec) {
-            output::log("Registering systems call for this instruction.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
+            output::log("Registering systems call for this instruction.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
             vector<string> uidargs;
             for (auto a:argsname) {
                 uidargs.push_back(function_call.variablesdict_context[a].variable_metadata.uuid);
@@ -398,7 +398,7 @@ bool vodka::library::math::CallTreatement::multiply(SourcesStack lclstack) {
             return true;
         }
     } else if (eles.size()==5) {
-        output::log("Checking content existence.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
+        output::log("Checking content existence.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,2},{function_call.cell_context.content.size(),3});
         vodka::analyser::ArgumentChecker argcheck;
         argcheck.lastest_allowed_type={};
         argcheck.patern={{vodka::variables::VariableDatatype::vodec},{vodka::variables::VariableDatatype::vodec},{vodka::variables::VariableDatatype::vodec},{vodka::variables::VariableDatatype::vodint}};
@@ -413,7 +413,7 @@ bool vodka::library::math::CallTreatement::multiply(SourcesStack lclstack) {
             return false;
         }
         vector<string> inoutargs(eles.begin()+1,eles.end()-1);
-        output::log("Registering systems call for this instruction.",function_call.main_logstep_context,function_call.last_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
+        output::log("Registering systems call for this instruction.",function_call.main_logstep_context,2,{(int)function_call.iteration_number_context+1,3},{function_call.cell_context.content.size(),3});
         vector<string> uidargs;
         for (auto a:inoutargs) {
             uidargs.push_back(function_call.variablesdict_context[a].variable_metadata.uuid);
@@ -436,11 +436,11 @@ bool vodka::library::math::CallTreatement::multiply(SourcesStack lclstack) {
     return false;
 }
 //* Main function for parsing vodka instruction
-bool vodka::library::math::CallTreatement::call_treatement(SourcesStack lclstack) {
+bool vodka::library::math::CallTreatement::_call_treatement(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
     line=function_call.line_checked.line_checked.content;
-    if (function_call.line_checked.checked==false) {
+    if (function_call.line_checked.get_analyse_result()==false) {
         return false;
     }
     if (function_call.line_checked.type!="internal_library") {

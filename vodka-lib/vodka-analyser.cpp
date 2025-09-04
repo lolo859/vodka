@@ -3,7 +3,6 @@
 #include <vector>
 #include <map>
 #include <algorithm>
-#include <boost/uuid/uuid_io.hpp>
 using namespace std;
 using namespace vodka::errors;
 using namespace vodka::utilities;
@@ -13,7 +12,7 @@ vector<string> vodka::analyser::get_arguments(string line) {
     return vector<string>(eles.begin()+1,eles.end());
 }
 //* Checking if the line is conform to vodka syntax (doesn't check the line argument)
-bool vodka::analyser::LineSyntaxChecker::check(SourcesStack lclstack) {
+bool vodka::analyser::LineSyntaxChecker::_check(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
     if (content=="") {
@@ -39,10 +38,10 @@ bool vodka::analyser::LineSyntaxChecker::check(SourcesStack lclstack) {
     return false;
 }
 //* Analyse the type of line (variable declaration, library instruction, debug line)
-bool vodka::analyser::LineTypeChecker::line_type_analyse(SourcesStack lclstack) {
+bool vodka::analyser::LineTypeChecker::_line_type_analyse(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    if (line_checked.checked==false) {
+    if (line_checked.get_check_result()==false) {
         raise(ErrorContainer("vodka.error.analyser.chain_error : Previous treatement hasn't been well executed.",line_checked.file,{line_checked.content},{line_checked.line_number},srclclstack));
         return false;
     } else {
@@ -68,10 +67,10 @@ bool vodka::analyser::LineTypeChecker::line_type_analyse(SourcesStack lclstack) 
     return false;
 }
 //* Parse the variable declaration (name, datatype, value, constant)
-bool vodka::analyser::VariableDeclarationAnalyser::parser(SourcesStack lclstack) {
+bool vodka::analyser::VariableDeclarationAnalyser::_parser(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    if (line_checked.checked==false || line_checked.line_checked.checked==false || line_checked.type!="var") {
+    if (line_checked.get_analyse_result()==false || line_checked.line_checked.get_check_result()==false || line_checked.type!="var") {
         raise(ErrorContainer("vodka.error.analyser.chain_error : Previous treatement hasn't been well executed.",line_checked.line_checked.file,{line_checked.line_checked.content},{line_checked.line_checked.line_number},srclclstack));
         return false;
     }
@@ -119,12 +118,12 @@ bool vodka::analyser::VariableDeclarationAnalyser::parser(SourcesStack lclstack)
     }
 }
 //* Check the type and value of the variable (use vodka::type::<concerned type>::check_value(), if datatype is vodka, please include a list of already declared variables inside the context argument)
-bool vodka::analyser::VariableDeclarationAnalyser::check_type_value(vector<string> context,SourcesStack lclstack) {
+bool vodka::analyser::VariableDeclarationAnalyser::_check_type_value(vector<string> context,SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    if (checked) {
+    if (get_parser_result()) {
         bool f=false;
-        for (auto a:vodka::InternalDataypes){
+        for (auto a:vodka::InternalDatatypes){
             if (datatype==a) {
                 f=true;
                 break;
@@ -171,10 +170,10 @@ bool vodka::analyser::VariableDeclarationAnalyser::check_type_value(vector<strin
     }
 }
 //* Make the corresponding vodka::variables::variable
-bool vodka::analyser::VariableDeclarationAnalyser::make_info(SourcesStack lclstack) {
+bool vodka::analyser::VariableDeclarationAnalyser::_make_info(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    if (checked_type_value) {
+    if (get_check_type_value_result()) {
         if (datatype!="vodka") {
             variable_metadata.algo_dependant=false;
             variable_metadata.is_vodka_constant=is_vodka_const;
@@ -233,10 +232,10 @@ bool vodka::analyser::VariableDeclarationAnalyser::make_info(SourcesStack lclsta
     }
 }
 //* Make a pre-treatement of the value to store
-bool vodka::analyser::VariableDeclarationAnalyser::value_pre_treatement(SourcesStack lclstack) {
+bool vodka::analyser::VariableDeclarationAnalyser::_value_pre_treatement(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    if (checked_type_value) {
+    if (get_make_info_result()) {
         if (datatype=="vodint") {
             value=vodka::type::vodint::remove_zero(value,srclclstack);
             return true;
@@ -257,10 +256,10 @@ bool vodka::analyser::VariableDeclarationAnalyser::value_pre_treatement(SourcesS
     }
 }
 //* Output the variable under a vodka::variable::variable_container object
-bool vodka::analyser::VariableDeclarationAnalyser::make_output(SourcesStack lclstack) {
+bool vodka::analyser::VariableDeclarationAnalyser::_make_output(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    if (pre_treated) {
+    if (get_pre_treatement_result()) {
         if (datatype=="vodint") {
             vodka::variables::VodintVariable varr;
             variable_container.variable_metadata=variable_metadata;
@@ -368,7 +367,7 @@ bool vodka::analyser::VariableDeclarationAnalyser::make_output(SourcesStack lcls
 bool vodka::analyser::ArgumentChecker::check(SourcesStack lclstack) {
     auto srclclstack=lclstack;
     srclclstack.add(__PRETTY_FUNCTION__,__FILE__);
-    if (line_content.checked) {
+    if (line_content.get_analyse_result()) {
         if (line_content.type=="internal_library") {
             auto argsname=get_arguments(line_content.line_checked.content);
             for (auto arg:argsname) {
