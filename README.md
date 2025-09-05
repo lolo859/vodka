@@ -30,3 +30,6 @@ The executable will be named `vodka-beta`. To install the library (only .a and h
 sudo dnf copr enable lolo859/vodka-lib-beta
 sudo dnf install vodka-lib-beta
 ```
+
+
+Copr Proof
